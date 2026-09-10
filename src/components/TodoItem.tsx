@@ -3,11 +3,12 @@ import type { CSSProperties } from 'react';
 import { isOverdue, todayISO } from '../lib/dates';
 import { PALETTE } from '../lib/colors';
 import type { ChildrenMap } from '../domain/tree';
-import { toggleTodo } from '../store/actions';
+import { addTodo, editTodo, toggleTodo } from '../store/actions';
 import { useTodoStore } from '../store/todoStore';
 import type { Todo } from '../types';
 import { ChevronIcon, MoveIcon, PencilIcon, PlusIcon, TrashIcon } from './icons';
 import { visibleChildren } from './TodoTree';
+import { TodoEditor } from './TodoEditor';
 import styles from './TodoItem.module.css';
 
 interface Props {
@@ -21,6 +22,7 @@ export function TodoItem({ todo, map, depth }: Props) {
   const hideCompleted = useTodoStore((s) => s.hideCompleted);
   const toggleCollapsed = useTodoStore((s) => s.toggleCollapsed);
   const [showDetails, setShowDetails] = useState(false);
+  const [mode, setMode] = useState<'view' | 'edit' | 'add'>('view');
 
   const children = visibleChildren(map, todo.id, hideCompleted);
   const hasChildren = (map.get(todo.id)?.length ?? 0) > 0;
@@ -74,12 +76,38 @@ export function TodoItem({ todo, map, depth }: Props) {
         </button>
 
         <div className={styles.actions}>
-          <button type="button" className={styles.iconButton} aria-label={`Edit ${todo.title}`}><PencilIcon /></button>
-          <button type="button" className={styles.iconButton} aria-label={`Add item under ${todo.title}`}><PlusIcon /></button>
+          <button type="button" className={styles.iconButton} aria-label={`Edit ${todo.title}`} onClick={() => setMode('edit')}><PencilIcon /></button>
+          <button
+            type="button"
+            className={styles.iconButton}
+            aria-label={`Add item under ${todo.title}`}
+            onClick={() => { setMode('add'); if (collapsed) toggleCollapsed(todo.id); }}
+          >
+            <PlusIcon />
+          </button>
           <button type="button" className={styles.iconButton} aria-label={`Move ${todo.title}`}><MoveIcon /></button>
           <button type="button" className={styles.iconButton} aria-label={`Delete ${todo.title}`}><TrashIcon /></button>
         </div>
       </div>
+
+      {mode === 'edit' ? (
+        <TodoEditor
+          initial={{ title: todo.title, description: todo.description, due_date: todo.due_date, color: todo.color }}
+          heading={`Edit ${todo.title}`}
+          submitLabel="Save changes"
+          onSave={(v) => { editTodo(todo.id, v); setMode('view'); }}
+          onCancel={() => setMode('view')}
+        />
+      ) : null}
+      {mode === 'add' ? (
+        <TodoEditor
+          initial={{ title: '', description: '', due_date: null, color: todo.color }}
+          heading={`New item under ${todo.title}`}
+          submitLabel="Add item"
+          onSave={(v) => { addTodo(v, todo.id); setMode('view'); }}
+          onCancel={() => setMode('view')}
+        />
+      ) : null}
 
       {showDetails ? (
         <div className={styles.details}>

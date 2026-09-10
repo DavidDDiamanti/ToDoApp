@@ -1,0 +1,25 @@
+.form {
+  display: grid; gap: var(--space-2);
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: var(--space-4); margin: var(--space-2) 0;
+}
+.heading { font-family: var(--font-display); font-size: var(--text-lg); margin: 0 0 var(--space-1); }
+.label { font-size: var(--text-sm); color: var(--ink-muted); }
+.input, .textarea {
+  width: 100%; min-height: var(--touch);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--bg); color: var(--ink);
+}
+.textarea { resize: vertical; }
+.error { margin: 0; color: var(--danger); font-size: var(--text-sm); }
+.buttons { display: flex; gap: var(--space-2); margin-top: var(--space-2); }
+.primary, .secondary {
+  min-height: var(--touch); padding: 0 var(--space-4);
+  border-radius: var(--radius); border: 1px solid transparent;
+  transition: background var(--motion) var(--ease);
+}
+.primary { background: var(--accent); color: var(--on-accent); }
+.primary:hover { filter: brightness(1.08); }
+.secondary { background: transparent; border-color: var(--line); color: var(--ink); }
+.secondary:hover { background: color-mix(in srgb, var(--ink) 6%, transparent); }
