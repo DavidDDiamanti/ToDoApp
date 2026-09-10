@@ -3,12 +3,14 @@ import type { CSSProperties } from 'react';
 import { isOverdue, todayISO } from '../lib/dates';
 import { PALETTE } from '../lib/colors';
 import type { ChildrenMap } from '../domain/tree';
-import { addTodo, editTodo, toggleTodo } from '../store/actions';
+import { addTodo, editTodo, moveTodoTo, removeTodo, toggleTodo } from '../store/actions';
 import { useTodoStore } from '../store/todoStore';
 import type { Todo } from '../types';
 import { ChevronIcon, MoveIcon, PencilIcon, PlusIcon, TrashIcon } from './icons';
 import { visibleChildren } from './TodoTree';
 import { TodoEditor } from './TodoEditor';
+import { DeleteDialog } from './DeleteDialog';
+import { MoveMenu } from './MoveMenu';
 import styles from './TodoItem.module.css';
 
 interface Props {
@@ -21,8 +23,9 @@ export function TodoItem({ todo, map, depth }: Props) {
   const collapsed = useTodoStore((s) => s.collapsed[todo.id] === true);
   const hideCompleted = useTodoStore((s) => s.hideCompleted);
   const toggleCollapsed = useTodoStore((s) => s.toggleCollapsed);
+  const todos = useTodoStore((s) => s.todos);
   const [showDetails, setShowDetails] = useState(false);
-  const [mode, setMode] = useState<'view' | 'edit' | 'add'>('view');
+  const [mode, setMode] = useState<'view' | 'edit' | 'add' | 'move' | 'delete'>('view');
 
   const children = visibleChildren(map, todo.id, hideCompleted);
   const hasChildren = (map.get(todo.id)?.length ?? 0) > 0;
@@ -85,8 +88,15 @@ export function TodoItem({ todo, map, depth }: Props) {
           >
             <PlusIcon />
           </button>
-          <button type="button" className={styles.iconButton} aria-label={`Move ${todo.title}`}><MoveIcon /></button>
-          <button type="button" className={styles.iconButton} aria-label={`Delete ${todo.title}`}><TrashIcon /></button>
+          <button type="button" className={styles.iconButton} aria-label={`Move ${todo.title}`} onClick={() => setMode('move')}><MoveIcon /></button>
+          <button
+            type="button"
+            className={styles.iconButton}
+            aria-label={`Delete ${todo.title}`}
+            onClick={() => (hasChildren ? setMode('delete') : removeTodo(todo.id, 'subtree'))}
+          >
+            <TrashIcon />
+          </button>
         </div>
       </div>
 
@@ -105,6 +115,17 @@ export function TodoItem({ todo, map, depth }: Props) {
           heading={`New item under ${todo.title}`}
           submitLabel="Add item"
           onSave={(v) => { addTodo(v, todo.id); setMode('view'); }}
+          onCancel={() => setMode('view')}
+        />
+      ) : null}
+      {mode === 'move' ? (
+        <MoveMenu todo={todo} map={map} todos={todos} onMove={(p) => { moveTodoTo(todo.id, p); setMode('view'); }} onCancel={() => setMode('view')} />
+      ) : null}
+      {mode === 'delete' ? (
+        <DeleteDialog
+          title={todo.title}
+          onDeleteAll={() => { removeTodo(todo.id, 'subtree'); setMode('view'); }}
+          onPromote={() => { removeTodo(todo.id, 'promote'); setMode('view'); }}
           onCancel={() => setMode('view')}
         />
       ) : null}
