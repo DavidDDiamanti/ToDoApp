@@ -1,6 +1,6 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TodoTree } from './TodoTree';
 import { useTodoStore } from '../store/todoStore';
 import { mk } from '../test/fixtures';
@@ -59,6 +59,31 @@ describe('TodoTree', () => {
     expect(time).toHaveAttribute('dateTime', '2026-01-05');
     expect(time?.textContent).not.toBe('');
     expect(time?.textContent).not.toBe('2026-01-05');
+  });
+
+  it('shows date and time together', () => {
+    seed(mk('a', null, { title: 'Alpha', due_date: '2026-01-05', due_time: '15:37' }));
+    render(<TodoTree />);
+    const time = screen.getByRole('treeitem', { name: /alpha/i }).querySelector('time');
+    expect(time).toHaveAttribute('dateTime', '2026-01-05T15:37');
+    expect(time?.textContent).toMatch(/15:37|3:37/);
+  });
+
+  describe('time-based overdue', () => {
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('flags an item whose time has passed today', () => {
+      vi.useFakeTimers({ now: new Date(2026, 8, 10, 12, 0) });
+      seed(
+        mk('past', null, { title: 'Past', due_date: '2026-09-10', due_time: '11:00' }),
+        mk('future', null, { title: 'Future', due_date: '2026-09-10', due_time: '13:00' }),
+      );
+      render(<TodoTree />);
+      expect(screen.getByRole('treeitem', { name: /past/i })).toHaveAttribute('data-overdue', 'true');
+      expect(screen.getByRole('treeitem', { name: /future/i })).not.toHaveAttribute('data-overdue');
+    });
   });
 
   it('hides completed subtrees when hideCompleted is on', () => {
