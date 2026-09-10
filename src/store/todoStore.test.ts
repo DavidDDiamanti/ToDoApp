@@ -37,6 +37,13 @@ describe('todoStore', () => {
     expect(store.getState().dirty).toEqual(['b']);
   });
 
+  it('clearDirty treats Z and +00:00 forms of the same instant as unchanged', () => {
+    const { store } = fresh();
+    store.getState().upsertTodo(mk('a', null, { updated_at: '2026-09-10T10:00:00+00:00' }), true);
+    store.getState().clearDirty(['a'], { a: '2026-09-10T10:00:00.000Z' });
+    expect(store.getState().dirty).toEqual([]);
+  });
+
   it('persists state to storage and rehydrates it', async () => {
     const { storage, store } = fresh();
     store.getState().upsertTodo(mk('a'), true);

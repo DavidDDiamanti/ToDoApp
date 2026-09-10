@@ -92,7 +92,10 @@ export function createSyncEngine(remote: TodoRemote, store: TodoStore, status: S
     if (g !== gen) return;
     for (const row of rows) applyRemoteRow(row);
     const next = maxUpdatedAt(rows, store.getState().lastPulledAt);
-    if (next !== null) store.getState().setLastPulledAt(next);
+    if (next !== null) {
+      const nowIso = new Date().toISOString();
+      store.getState().setLastPulledAt(newerThan(next, nowIso) ? nowIso : next);
+    }
   }
 
   async function run(): Promise<void> {

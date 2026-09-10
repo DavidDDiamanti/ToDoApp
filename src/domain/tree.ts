@@ -4,6 +4,9 @@ export type ChildrenMap = Map<string | null, Todo[]>;
 
 function bySortOrder(a: Todo, b: Todo): number {
   if (a.sort_order !== b.sort_order) return a.sort_order - b.sort_order;
+  const ta = Date.parse(a.created_at);
+  const tb = Date.parse(b.created_at);
+  if (!Number.isNaN(ta) && !Number.isNaN(tb)) return ta - tb;
   if (a.created_at < b.created_at) return -1;
   if (a.created_at > b.created_at) return 1;
   return 0;

@@ -24,6 +24,13 @@ describe('buildChildrenMap', () => {
     expect(ids(map.get(null))).toEqual(['early', 'tie', 'late']);
   });
 
+  it('tie-breaks siblings by created_at instant, not string form', () => {
+    const early = mk('early', null, { sort_order: 0, created_at: '2026-01-01T00:00:00+00:00' });
+    const late = mk('late', null, { sort_order: 0, created_at: '2026-01-01T00:00:01.000Z' });
+    const map = buildChildrenMap([late, early]);
+    expect(ids(map.get(null))).toEqual(['early', 'late']);
+  });
+
   it('excludes tombstoned items', () => {
     const map = buildChildrenMap([mk('a'), mk('gone', null, { deleted_at: '2026-01-01T00:00:00Z' })]);
     expect(ids(map.get(null))).toEqual(['a']);

@@ -66,7 +66,16 @@ export function createTodoStore(opts: { storage: StateStorage; name: string }) {
           })),
         clearDirty: (ids, seen) =>
           set((s) => ({
-            dirty: s.dirty.filter((id) => !(ids.includes(id) && s.todos[id]?.updated_at === seen[id])),
+            dirty: s.dirty.filter((id) => {
+              if (!ids.includes(id)) return true;
+              const current = s.todos[id]?.updated_at;
+              const a = current === undefined ? NaN : Date.parse(current);
+              const b = Date.parse(seen[id]);
+              // Fall back to string equality when either side isn't a parseable
+              // timestamp, so a non-ISO value still clears on an exact match.
+              const unchanged = Number.isNaN(a) || Number.isNaN(b) ? current === seen[id] : a === b;
+              return !unchanged;
+            }),
           })),
         setLastPulledAt: (ts) => set({ lastPulledAt: ts }),
         toggleCollapsed: (id) =>

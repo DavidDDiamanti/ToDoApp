@@ -199,6 +199,27 @@ describe('createSyncEngine', () => {
     expect(remote.fetchSince).toHaveBeenCalledTimes(2);
   });
 
+  it('never advances lastPulledAt past the current time', async () => {
+    const future = mk('future', null, { updated_at: new Date(Date.now() + 3_600_000).toISOString() });
+    const { store, engine } = harness([future]);
+    engine.start('u1');
+    await engine.sync();
+    const cursor = store.getState().lastPulledAt;
+    expect(cursor).not.toBeNull();
+    expect(Date.parse(cursor as string)).toBeLessThanOrEqual(Date.now());
+    expect(store.getState().todos.future).toBeDefined();
+  });
+
+  it('reports offline and touches nothing when navigator.onLine is false', async () => {
+    const { engine, remote, status } = harness();
+    const spy = vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
+    engine.start('u1');
+    await engine.sync();
+    expect(remote.fetchSince).not.toHaveBeenCalled();
+    expect(status.getState().state).toBe('offline');
+    spy.mockRestore();
+  });
+
   it('does not clear dirty rows when an upsert resolves after stop()', async () => {
     const { store, engine, remote, status } = harness();
     const d = deferred<void>();
