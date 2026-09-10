@@ -18,6 +18,16 @@ function fakeRemote(serverRows: Todo[] = []) {
   return { remote, upserts, pushRow: (r: Todo) => onRow?.(r), pushStatus: (s: string) => onStatus?.(s) };
 }
 
+function deferred<T>() {
+  let resolve!: (v: T) => void;
+  let reject!: (e: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+}
+
 function harness(serverRows: Todo[] = []) {
   const store = createTodoStore({ storage: createMemoryStorage(), name: 'sync-test' });
   const status = createSyncStatusStore();
@@ -110,5 +120,47 @@ describe('createSyncEngine', () => {
     engine.start('u1');
     await Promise.all([engine.sync(), engine.sync()]);
     expect(remote.fetchSince).toHaveBeenCalledTimes(1);
+  });
+
+  it('ignores the result of a pull that finishes after stop()', async () => {
+    const { store, engine, remote } = harness();
+    const d = deferred<Todo[]>();
+    (remote.fetchSince as ReturnType<typeof vi.fn>).mockReturnValueOnce(d.promise);
+    engine.start('u1');
+    const running = engine.sync();
+    engine.stop();
+    d.resolve([mk('late', null, { updated_at: '2026-09-10T10:00:00.000Z' })]);
+    await running;
+    expect(store.getState().todos.late).toBeUndefined();
+    expect(store.getState().lastPulledAt).toBeNull();
+  });
+
+  it('runs once more after a sync requested during an in-flight run', async () => {
+    const { store, engine, remote } = harness();
+    const d = deferred<void>();
+    (remote.upsert as ReturnType<typeof vi.fn>).mockReturnValueOnce(d.promise);
+    store.getState().upsertTodo(mk('a'), true);
+    engine.start('u1');
+    const first = engine.sync();
+    store.getState().upsertTodo(mk('b'), true);
+    const second = engine.sync();
+    d.resolve();
+    await first;
+    await second;
+    await new Promise((r) => setTimeout(r, 0));
+    expect(remote.upsert).toHaveBeenCalledTimes(2);
+    expect(store.getState().dirty).toEqual([]);
+  });
+
+  it('still pulls when the flush fails', async () => {
+    const fresh = mk('fresh', null, { updated_at: '2026-09-10T10:00:00.000Z' });
+    const { store, engine, remote, status } = harness([fresh]);
+    (remote.upsert as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error('network'));
+    store.getState().upsertTodo(mk('a'), true);
+    engine.start('u1');
+    await engine.sync();
+    expect(store.getState().todos.fresh).toBeDefined();
+    expect(store.getState().dirty).toEqual(['a']);
+    expect(status.getState().state).toBe('error');
   });
 });

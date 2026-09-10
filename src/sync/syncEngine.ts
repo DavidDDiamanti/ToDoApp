@@ -59,14 +59,17 @@ export function createSyncEngine(remote: TodoRemote, store: TodoStore, status: S
   let userId: string | null = null;
   let unsubscribe: (() => void) | null = null;
   let inFlight: Promise<void> | null = null;
+  let gen = 0;
+  let rerun = false;
 
   function applyRemoteRow(row: Todo): void {
+    if (userId === null) return;
     const s = store.getState();
     const merged = mergeRemote(s.todos[row.id], s.dirty.includes(row.id), row);
     if (merged === row) s.upsertTodo(row, false);
   }
 
-  async function flushDirty(): Promise<void> {
+  async function flushDirty(g: number): Promise<void> {
     const s = store.getState();
     const seen: Record<string, string> = {};
     const rows: Todo[] = [];
@@ -78,35 +81,50 @@ export function createSyncEngine(remote: TodoRemote, store: TodoStore, status: S
     }
     for (const group of chunk(rows, FLUSH_CHUNK)) {
       await remote.upsert(group);
+      if (g !== gen) return;
       store.getState().clearDirty(group.map((r) => r.id), seen);
     }
   }
 
-  async function pullSince(): Promise<void> {
+  async function pullSince(g: number): Promise<void> {
     const since = overlapSince(store.getState().lastPulledAt);
     const rows = await remote.fetchSince(since);
+    if (g !== gen) return;
     for (const row of rows) applyRemoteRow(row);
     const next = maxUpdatedAt(rows, store.getState().lastPulledAt);
     if (next !== null) store.getState().setLastPulledAt(next);
   }
 
   async function run(): Promise<void> {
+    const g = gen;
     if (typeof navigator !== 'undefined' && navigator.onLine === false) {
       status.getState().set('offline');
       return;
     }
     if (store.getState().dirty.length > 0) status.getState().set('pending');
+    let failed = false;
     try {
-      await flushDirty();
-      await pullSince();
-      const stillDirty = store.getState().dirty.length > 0;
-      status.getState().set(stillDirty ? 'pending' : 'synced', new Date().toISOString());
+      await flushDirty(g);
     } catch {
-      status.getState().set('error');
+      failed = true;
     }
+    if (g !== gen) return;
+    try {
+      await pullSince(g);
+    } catch {
+      failed = true;
+    }
+    if (g !== gen) return;
+    if (failed) {
+      status.getState().set('error');
+      return;
+    }
+    const stillDirty = store.getState().dirty.length > 0;
+    status.getState().set(stillDirty ? 'pending' : 'synced', new Date().toISOString());
   }
 
   function stop(): void {
+    gen += 1;
     unsubscribe?.();
     unsubscribe = null;
     userId = null;
@@ -114,9 +132,16 @@ export function createSyncEngine(remote: TodoRemote, store: TodoStore, status: S
 
   function sync(): Promise<void> {
     if (userId === null) return Promise.resolve();
-    if (inFlight) return inFlight;
+    if (inFlight) {
+      rerun = true;
+      return inFlight;
+    }
     inFlight = run().finally(() => {
       inFlight = null;
+      if (rerun) {
+        rerun = false;
+        if (userId !== null && store.getState().dirty.length > 0) inFlight = sync();
+      }
     });
     return inFlight;
   }
