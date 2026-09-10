@@ -42,6 +42,9 @@ describe('overlapSince', () => {
   it('subtracts the overlap window', () => {
     expect(overlapSince('2026-09-10T10:01:00.000Z', 60_000)).toBe('2026-09-10T10:00:00.000Z');
   });
+  it('falls back to the epoch for an unparsable lastPulledAt', () => {
+    expect(overlapSince('garbage')).toBe('1970-01-01T00:00:00.000Z');
+  });
 });
 
 describe('maxUpdatedAt', () => {
@@ -49,5 +52,10 @@ describe('maxUpdatedAt', () => {
     const rows = [mk('a', null, { updated_at: '2026-09-10T10:00:00+00:00' }), mk('b', null, { updated_at: '2026-09-10T10:00:02+00:00' })];
     expect(maxUpdatedAt(rows, '2026-09-10T10:00:01.000Z')).toBe('2026-09-10T10:00:02.000Z');
     expect(maxUpdatedAt([], 'x')).toBe('x');
+  });
+  it('ignores an unparsable current value instead of throwing', () => {
+    const rows = [mk('a', null, { updated_at: '2026-09-10T10:00:00.000Z' })];
+    expect(maxUpdatedAt(rows, 'not-a-date')).toBe('2026-09-10T10:00:00.000Z');
+    expect(maxUpdatedAt([], 'not-a-date')).toBe('not-a-date');
   });
 });

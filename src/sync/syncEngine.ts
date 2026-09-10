@@ -17,17 +17,19 @@ export function chunk<T>(items: T[], size: number): T[][] {
 }
 
 export function overlapSince(lastPulledAt: string | null, overlapMs = 60_000): string {
-  if (lastPulledAt === null) return new Date(0).toISOString();
-  return new Date(Date.parse(lastPulledAt) - overlapMs).toISOString();
+  const t = lastPulledAt === null ? NaN : Date.parse(lastPulledAt);
+  if (Number.isNaN(t)) return new Date(0).toISOString();
+  return new Date(t - overlapMs).toISOString();
 }
 
 export function maxUpdatedAt(rows: Todo[], current: string | null): string | null {
-  let best = current === null ? null : Date.parse(current);
+  const parsedCurrent = current === null ? NaN : Date.parse(current);
+  let best: number | null = Number.isNaN(parsedCurrent) ? null : parsedCurrent;
   for (const r of rows) {
     const t = Date.parse(r.updated_at);
     if (best === null || t > best) best = t;
   }
-  if (best === null) return null;
   if (rows.length === 0) return current;
+  if (best === null) return null;
   return new Date(best).toISOString();
 }
