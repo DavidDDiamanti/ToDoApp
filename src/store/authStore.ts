@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
 import { setCurrentUserId } from './actions';
-import { switchStoreUser } from './todoStore';
+import { detachStoreForSignOut, switchStoreUser } from './todoStore';
 
 type Session = { user: { id: string; email?: string } } | null;
 
@@ -28,6 +28,7 @@ export interface AuthState {
 export function createAuthStore(client: AuthClient, onUser: (userId: string | null) => Promise<void>) {
   return create<AuthState>()((set, get) => {
     let lastUser: string | null = null;
+    let subscription: { unsubscribe(): void } | null = null;
     const apply = (session: Session) => {
       const userId = session?.user.id ?? null;
       set({ status: userId ? 'signed_in' : 'signed_out', userId, email: session?.user.email ?? null, error: null });
@@ -45,7 +46,9 @@ export function createAuthStore(client: AuthClient, onUser: (userId: string | nu
       init: async () => {
         const { data } = await client.getSession();
         apply(data.session);
-        client.onAuthStateChange((_event, session) => apply(session));
+        if (!subscription) {
+          subscription = client.onAuthStateChange((_event, session) => apply(session)).data.subscription;
+        }
       },
       sendMagicLink: async (email) => {
         set({ pendingEmail: email, error: null });
@@ -71,4 +74,5 @@ export function createAuthStore(client: AuthClient, onUser: (userId: string | nu
 export const useAuthStore = createAuthStore(supabase.auth, async (userId) => {
   setCurrentUserId(userId ?? 'local');
   if (userId) await switchStoreUser(userId);
+  else detachStoreForSignOut();
 });

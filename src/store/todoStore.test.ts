@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { createTodoStore, migrateTodoState, STORE_VERSION } from './todoStore';
+import { get } from 'idb-keyval';
+import { createTodoStore, detachStoreForSignOut, migrateTodoState, STORE_VERSION, switchStoreUser, useTodoStore } from './todoStore';
 import { createMemoryStorage } from './storage';
 import { mk } from '../test/fixtures';
 
@@ -58,6 +59,23 @@ describe('todoStore', () => {
     store.getState().reset();
     expect(store.getState().todos).toEqual({});
     expect(store.getState().dirty).toEqual([]);
+  });
+});
+
+describe('detachStoreForSignOut', () => {
+  it('clears memory but leaves the signed-in user\'s persisted namespace untouched', async () => {
+    await switchStoreUser('user-x');
+    useTodoStore.getState().upsertTodo(mk('keep-me'), true);
+    await new Promise((r) => setTimeout(r, 0));
+    const before = await get<string>('todo-store:user-x');
+    expect(before).toContain('keep-me');
+    detachStoreForSignOut();
+    await new Promise((r) => setTimeout(r, 0));
+    expect(useTodoStore.getState().todos).toEqual({});
+    expect(useTodoStore.getState().dirty).toEqual([]);
+    const after = await get<string>('todo-store:user-x');
+    expect(after).toContain('keep-me');
+    expect(useTodoStore.persist.getOptions().name).toBe('todo-store:signed-out');
   });
 });
 

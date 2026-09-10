@@ -98,3 +98,14 @@ export async function switchStoreUser(userId: string): Promise<void> {
   useTodoStore.persist.setOptions({ name: `todo-store:${userId}` });
   await useTodoStore.persist.rehydrate();
 }
+
+/**
+ * On sign-out: point persistence at a throwaway namespace, then clear memory.
+ * Order matters: reset() persists on every set, so switching the namespace
+ * first keeps the signed-out user's IndexedDB data (including unsynced dirty
+ * rows) intact for their next sign-in.
+ */
+export function detachStoreForSignOut(): void {
+  useTodoStore.persist.setOptions({ name: 'todo-store:signed-out' });
+  useTodoStore.getState().reset();
+}

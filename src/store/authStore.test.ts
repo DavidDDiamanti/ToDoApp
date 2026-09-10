@@ -5,9 +5,11 @@ type Session = { user: { id: string; email?: string } } | null;
 
 function fakeClient(initial: Session = null) {
   let listener: ((event: string, session: Session) => void) | null = null;
+  let subscribeCount = 0;
   const client: AuthClient = {
     getSession: async () => ({ data: { session: initial } }),
     onAuthStateChange: (cb) => {
+      subscribeCount += 1;
       listener = cb;
       return { data: { subscription: { unsubscribe: () => { listener = null; } } } };
     },
@@ -15,7 +17,13 @@ function fakeClient(initial: Session = null) {
     verifyOtp: vi.fn(async () => ({ error: null })),
     signOut: vi.fn(async () => ({ error: null })),
   };
-  return { client, emit: (event: string, session: Session) => listener?.(event, session) };
+  return {
+    client,
+    emit: (event: string, session: Session) => listener?.(event, session),
+    get subscribeCount() {
+      return subscribeCount;
+    },
+  };
 }
 
 describe('authStore', () => {
@@ -59,5 +67,13 @@ describe('authStore', () => {
     await store.getState().verifyCode('123456');
     expect(client.verifyOtp).toHaveBeenCalledWith({ email: 'me@example.com', token: '123456', type: 'email' });
     expect(store.getState().error).toBe('Token has expired');
+  });
+
+  it('init subscribes to auth changes only once even when called twice', async () => {
+    const f = fakeClient(null);
+    const store = createAuthStore(f.client, async () => {});
+    await store.getState().init();
+    await store.getState().init();
+    expect(f.subscribeCount).toBe(1);
   });
 });
