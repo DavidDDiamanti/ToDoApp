@@ -85,3 +85,50 @@ describe('moving from the tree', () => {
     expect(useTodoStore.getState().todos.b.parent_id).toBeNull();
   });
 });
+
+describe('move menu selection', () => {
+  it('starts on a disabled placeholder so choosing Top level fires a change', async () => {
+    seed(mk('a', null, { title: 'Alpha' }), mk('b', 'a', { title: 'Beta' }));
+    render(<TodoTree />);
+    await userEvent.click(screen.getByRole('button', { name: 'Move Beta' }));
+    const select = screen.getByLabelText('Move Beta to') as HTMLSelectElement;
+    expect(select.value).toBe('?');
+    const placeholder = screen.getByRole('option', { name: 'Choose where to move it' }) as HTMLOptionElement;
+    expect(placeholder.disabled).toBe(true);
+    expect((screen.getByRole('option', { name: 'Top level' }) as HTMLOptionElement).selected).toBe(false);
+  });
+
+  it('Escape closes the move menu without moving', async () => {
+    seed(mk('a', null, { title: 'Alpha' }), mk('b', 'a', { title: 'Beta' }));
+    render(<TodoTree />);
+    await userEvent.click(screen.getByRole('button', { name: 'Move Beta' }));
+    await userEvent.keyboard('{Escape}');
+    expect(screen.queryByLabelText('Move Beta to')).toBeNull();
+    expect(useTodoStore.getState().todos.b.parent_id).toBe('a');
+  });
+});
+
+describe('delete dialog keyboard', () => {
+  it('Escape cancels the dialog', async () => {
+    seed(mk('a', null, { title: 'Alpha' }), mk('b', 'a', { title: 'Beta' }));
+    render(<TodoTree />);
+    await userEvent.click(screen.getByRole('button', { name: 'Delete Alpha' }));
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    await userEvent.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(useTodoStore.getState().todos.a.deleted_at).toBeNull();
+  });
+
+  it('Tab cycles focus inside the dialog', async () => {
+    seed(mk('a', null, { title: 'Alpha' }), mk('b', 'a', { title: 'Beta' }));
+    render(<TodoTree />);
+    await userEvent.click(screen.getByRole('button', { name: 'Delete Alpha' }));
+    const first = screen.getByRole('button', { name: 'Delete children too' });
+    const last = screen.getByRole('button', { name: 'Cancel' });
+    expect(first).toHaveFocus();
+    await userEvent.tab({ shift: true });
+    expect(last).toHaveFocus();
+    await userEvent.tab();
+    expect(first).toHaveFocus();
+  });
+});

@@ -29,15 +29,28 @@ export function MoveMenu({ todo, map, todos, onMove, onCancel }: Props) {
   const id = useId();
   const targets = moveTargets(todos, map, todo.id);
   return (
-    <div className={styles.menu}>
+    <div
+      className={styles.menu}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          onCancel();
+        }
+      }}
+    >
       <label className={styles.label} htmlFor={`${id}-select`}>Move {todo.title} to</label>
       <select
         id={`${id}-select`}
         className={styles.select}
-        defaultValue=""
-        onChange={(e) => onMove(e.target.value === '' ? null : e.target.value)}
+        defaultValue="?"
+        onChange={(e) => {
+          const v = e.target.value;
+          if (v === '?') return;
+          onMove(v === '' ? null : v);
+        }}
         autoFocus
       >
+        <option value="?" disabled>Choose where to move it</option>
         <option value="">Top level</option>
         {targets.map((t) => (
           <option key={t.id} value={t.id}>{`${'— '.repeat(t.depth)}${t.label}`}</option>
