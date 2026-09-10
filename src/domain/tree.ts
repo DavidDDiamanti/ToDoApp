@@ -28,9 +28,12 @@ export function buildChildrenMap(todos: Iterable<Todo>): ChildrenMap {
 
 export function getDescendantIds(map: ChildrenMap, id: string): string[] {
   const out: string[] = [];
+  const seen = new Set<string>([id]);
   const stack: Todo[] = [...(map.get(id) ?? [])];
   while (stack.length > 0) {
     const t = stack.pop() as Todo;
+    if (seen.has(t.id)) continue;
+    seen.add(t.id);
     out.push(t.id);
     const kids = map.get(t.id);
     if (kids) stack.push(...kids);

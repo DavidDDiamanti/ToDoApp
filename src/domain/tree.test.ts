@@ -48,6 +48,10 @@ describe('getDescendantIds', () => {
     const map = buildChildrenMap([mk('a')]);
     expect(getDescendantIds(map, 'a')).toEqual([]);
   });
+  it('terminates on a cyclic parent chain and lists each node once', () => {
+    const map = buildChildrenMap([mk('a', 'b'), mk('b', 'a'), mk('c', 'a')]);
+    expect(getDescendantIds(map, 'a').sort()).toEqual(['b', 'c']);
+  });
 });
 
 describe('getAncestorIds', () => {
