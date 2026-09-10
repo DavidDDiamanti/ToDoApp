@@ -1,5 +1,6 @@
 import { useId, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
 import type { ColorName } from '../lib/colors';
+import { resolveDueDate } from '../lib/dates';
 import { ColorPicker } from './ColorPicker';
 import styles from './TodoEditor.module.css';
 
@@ -7,6 +8,7 @@ export interface EditorValues {
   title: string;
   description: string;
   due_date: string | null;
+  due_time: string | null;
   color: ColorName;
 }
 
@@ -16,14 +18,18 @@ interface Props {
   submitLabel: string;
   onSave: (values: EditorValues) => void;
   onCancel: () => void;
+  now?: () => Date;
 }
 
-export function TodoEditor({ initial, heading, submitLabel, onSave, onCancel }: Props) {
+const defaultNow = () => new Date();
+
+export function TodoEditor({ initial, heading, submitLabel, onSave, onCancel, now = defaultNow }: Props) {
   const id = useId();
   const titleRef = useRef<HTMLInputElement>(null);
   const [title, setTitle] = useState(initial.title);
   const [description, setDescription] = useState(initial.description);
   const [dueDate, setDueDate] = useState(initial.due_date ?? '');
+  const [dueTime, setDueTime] = useState(initial.due_time ?? '');
   const [color, setColor] = useState<ColorName>(initial.color);
   const [error, setError] = useState<string | null>(null);
 
@@ -35,7 +41,9 @@ export function TodoEditor({ initial, heading, submitLabel, onSave, onCancel }: 
       titleRef.current?.focus();
       return;
     }
-    onSave({ title: trimmed, description: description.trim(), due_date: dueDate.length > 0 ? dueDate : null, color });
+    const due_time = dueTime.length > 0 ? dueTime : null;
+    const due_date = resolveDueDate(dueDate.length > 0 ? dueDate : null, due_time, now());
+    onSave({ title: trimmed, description: description.trim(), due_date, due_time, color });
   }
 
   function onKeyDown(e: KeyboardEvent<HTMLElement>) {
@@ -65,8 +73,16 @@ export function TodoEditor({ initial, heading, submitLabel, onSave, onCancel }: 
       <label className={styles.label} htmlFor={`${id}-description`}>Description</label>
       <textarea id={`${id}-description`} className={styles.textarea} rows={3} value={description} onChange={(e) => setDescription(e.target.value)} />
 
-      <label className={styles.label} htmlFor={`${id}-due`}>Due date</label>
-      <input id={`${id}-due`} className={styles.input} type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+      <div className={styles.dateRow}>
+        <div>
+          <label className={styles.label} htmlFor={`${id}-due`}>Due date</label>
+          <input id={`${id}-due`} className={styles.input} type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+        </div>
+        <div>
+          <label className={styles.label} htmlFor={`${id}-due-time`}>Due time</label>
+          <input id={`${id}-due-time`} className={styles.input} type="time" value={dueTime} onChange={(e) => setDueTime(e.target.value)} />
+        </div>
+      </div>
 
       <ColorPicker value={color} onChange={setColor} idPrefix={id} />
 

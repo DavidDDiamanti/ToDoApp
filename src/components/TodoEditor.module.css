@@ -12,6 +12,8 @@
   background: var(--bg); color: var(--ink);
 }
 .textarea { resize: vertical; }
+.dateRow { display: flex; gap: var(--space-2); }
+.dateRow > div { flex: 1; }
 .error { margin: 0; color: var(--danger); font-size: var(--text-sm); }
 .buttons { display: flex; gap: var(--space-2); margin-top: var(--space-2); }
 .primary, .secondary {

@@ -33,7 +33,7 @@ export function Toolbar() {
       </div>
       {adding ? (
         <TodoEditor
-          initial={{ title: '', description: '', due_date: null, color: 'slate' }}
+          initial={{ title: '', description: '', due_date: null, due_time: null, color: 'slate' }}
           heading="New item"
           submitLabel="Add item"
           onSave={(v) => { addTodo(v, null); setAdding(false); }}
