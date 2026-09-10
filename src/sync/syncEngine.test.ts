@@ -58,4 +58,11 @@ describe('maxUpdatedAt', () => {
     expect(maxUpdatedAt(rows, 'not-a-date')).toBe('2026-09-10T10:00:00.000Z');
     expect(maxUpdatedAt([], 'not-a-date')).toBe('not-a-date');
   });
+  it('skips rows with unparsable timestamps and returns null when nothing is usable', () => {
+    const bad = mk('bad', null, { updated_at: 'garbage' });
+    const good = mk('good', null, { updated_at: '2026-09-10T10:00:00.000Z' });
+    expect(maxUpdatedAt([bad, good], null)).toBe('2026-09-10T10:00:00.000Z');
+    expect(maxUpdatedAt([good, bad], null)).toBe('2026-09-10T10:00:00.000Z');
+    expect(maxUpdatedAt([bad], null)).toBeNull();
+  });
 });

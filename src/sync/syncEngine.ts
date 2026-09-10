@@ -27,6 +27,7 @@ export function maxUpdatedAt(rows: Todo[], current: string | null): string | nul
   let best: number | null = Number.isNaN(parsedCurrent) ? null : parsedCurrent;
   for (const r of rows) {
     const t = Date.parse(r.updated_at);
+    if (Number.isNaN(t)) continue;
     if (best === null || t > best) best = t;
   }
   if (rows.length === 0) return current;
