@@ -31,6 +31,14 @@ describe('TodoEditor', () => {
     expect(screen.getByText('Title is required')).toBeInTheDocument();
   });
 
+  it('moves focus to the title field when submit fails validation', async () => {
+    const onSave = vi.fn();
+    render(<TodoEditor initial={initial} heading="Edit item" submitLabel="Save changes" onSave={onSave} onCancel={() => {}} />);
+    await userEvent.clear(screen.getByLabelText('Title'));
+    await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    expect(screen.getByLabelText('Title')).toHaveFocus();
+  });
+
   it('cancels on Escape', async () => {
     const onCancel = vi.fn();
     render(<TodoEditor initial={initial} heading="Edit item" submitLabel="Save changes" onSave={() => {}} onCancel={onCancel} />);

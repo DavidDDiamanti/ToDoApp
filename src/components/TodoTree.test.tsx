@@ -52,6 +52,13 @@ describe('TodoTree', () => {
     expect(screen.getByRole('treeitem', { name: /done/i })).not.toHaveAttribute('data-overdue');
   });
 
+  it('shows the due date in a locale-formatted form, not the raw ISO string', () => {
+    seed(mk('a', null, { title: 'Alpha', due_date: '2026-01-05' }));
+    render(<TodoTree />);
+    expect(screen.getByText('Jan 5, 2026')).toBeInTheDocument();
+    expect(screen.queryByText('2026-01-05')).toBeNull();
+  });
+
   it('hides completed subtrees when hideCompleted is on', () => {
     seed(mk('a', null, { title: 'Alpha', completed: true }), mk('b', 'a', { title: 'Beta', completed: true }), mk('c', null, { title: 'Gamma' }));
     useTodoStore.getState().setHideCompleted(true);

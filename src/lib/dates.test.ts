@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isOverdue, nowISO, todayISO } from './dates';
+import { formatDueDate, isOverdue, nowISO, todayISO } from './dates';
 
 describe('todayISO', () => {
   it('formats a local date as YYYY-MM-DD with zero padding', () => {
@@ -26,5 +26,11 @@ describe('isOverdue', () => {
   });
   it('is false without a due date', () => {
     expect(isOverdue({ due_date: null, completed: false }, today)).toBe(false);
+  });
+});
+
+describe('formatDueDate', () => {
+  it('formats an ISO date using a locale-aware format, not the raw string', () => {
+    expect(formatDueDate('2026-01-05')).toBe('Jan 5, 2026');
   });
 });

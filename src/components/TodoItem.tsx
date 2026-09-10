@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { CSSProperties } from 'react';
-import { isOverdue, todayISO } from '../lib/dates';
+import { formatDueDate, isOverdue, todayISO } from '../lib/dates';
 import { PALETTE } from '../lib/colors';
 import type { ChildrenMap } from '../domain/tree';
 import { addTodo, editTodo, moveTodoTo, removeTodo, toggleTodo } from '../store/actions';
@@ -74,7 +74,7 @@ export function TodoItem({ todo, map, depth }: Props) {
         >
           <span className={styles.title}>{todo.title}</span>
           {todo.due_date !== null ? (
-            <span className={`${styles.due} ${overdue ? styles.overdue : ''}`}>{todo.due_date}</span>
+            <time dateTime={todo.due_date} className={`${styles.due} ${overdue ? styles.overdue : ''}`}>{formatDueDate(todo.due_date)}</time>
           ) : null}
         </button>
 

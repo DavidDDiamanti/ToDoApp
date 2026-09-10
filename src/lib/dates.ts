@@ -14,3 +14,10 @@ export function nowISO(): string {
 export function isOverdue(todo: Pick<Todo, 'due_date' | 'completed'>, today: string): boolean {
   return todo.due_date !== null && !todo.completed && todo.due_date < today;
 }
+
+const dueDateFormatter = new Intl.DateTimeFormat('en-US', { dateStyle: 'medium' });
+
+export function formatDueDate(iso: string): string {
+  const [y, m, d] = iso.split('-').map(Number);
+  return dueDateFormatter.format(new Date(y, m - 1, d));
+}

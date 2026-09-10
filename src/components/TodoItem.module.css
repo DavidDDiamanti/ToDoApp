@@ -2,6 +2,7 @@
   position: relative;
   list-style: none;
   padding-left: calc(var(--rail) + var(--space-3));
+  scroll-margin-top: calc(var(--touch) + var(--space-4));
 }
 .item::before {
   content: '';

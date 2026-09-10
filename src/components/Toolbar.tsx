@@ -1,0 +1,37 @@
+import { useState } from 'react';
+import { addTodo } from '../store/actions';
+import { useTodoStore } from '../store/todoStore';
+import { PlusIcon } from './icons';
+import { TodoEditor } from './TodoEditor';
+import styles from './Toolbar.module.css';
+
+export function Toolbar() {
+  const hideCompleted = useTodoStore((s) => s.hideCompleted);
+  const setHideCompleted = useTodoStore((s) => s.setHideCompleted);
+  const [adding, setAdding] = useState(false);
+
+  return (
+    <header className={styles.bar}>
+      <div className={styles.row}>
+        <h1 className={styles.brand}>Todo</h1>
+        <label className={styles.toggle}>
+          <input type="checkbox" checked={hideCompleted} onChange={(e) => setHideCompleted(e.target.checked)} aria-label="Hide completed" />
+          <span>Hide completed</span>
+        </label>
+        <button type="button" className={styles.primary} onClick={() => setAdding(true)}>
+          <PlusIcon />
+          <span>New item</span>
+        </button>
+      </div>
+      {adding ? (
+        <TodoEditor
+          initial={{ title: '', description: '', due_date: null, color: 'slate' }}
+          heading="New item"
+          submitLabel="Add item"
+          onSave={(v) => { addTodo(v, null); setAdding(false); }}
+          onCancel={() => setAdding(false)}
+        />
+      ) : null}
+    </header>
+  );
+}

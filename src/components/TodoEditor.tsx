@@ -1,4 +1,4 @@
-import { useId, useState, type FormEvent, type KeyboardEvent } from 'react';
+import { useId, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
 import type { ColorName } from '../lib/colors';
 import { ColorPicker } from './ColorPicker';
 import styles from './TodoEditor.module.css';
@@ -20,6 +20,7 @@ interface Props {
 
 export function TodoEditor({ initial, heading, submitLabel, onSave, onCancel }: Props) {
   const id = useId();
+  const titleRef = useRef<HTMLInputElement>(null);
   const [title, setTitle] = useState(initial.title);
   const [description, setDescription] = useState(initial.description);
   const [dueDate, setDueDate] = useState(initial.due_date ?? '');
@@ -31,6 +32,7 @@ export function TodoEditor({ initial, heading, submitLabel, onSave, onCancel }: 
     const trimmed = title.trim();
     if (trimmed.length === 0) {
       setError('Title is required');
+      titleRef.current?.focus();
       return;
     }
     onSave({ title: trimmed, description: description.trim(), due_date: dueDate.length > 0 ? dueDate : null, color });
@@ -50,6 +52,7 @@ export function TodoEditor({ initial, heading, submitLabel, onSave, onCancel }: 
       <label className={styles.label} htmlFor={`${id}-title`}>Title</label>
       <input
         id={`${id}-title`}
+        ref={titleRef}
         className={styles.input}
         value={title}
         onChange={(e) => { setTitle(e.target.value); setError(null); }}
