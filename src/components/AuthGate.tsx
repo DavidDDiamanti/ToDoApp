@@ -14,6 +14,7 @@ export function AuthGate({ store = useAuthStore, children }: Props) {
   const init = store((s) => s.init);
   const sendMagicLink = store((s) => s.sendMagicLink);
   const verifyCode = store((s) => s.verifyCode);
+  const clearError = store((s) => s.clearError);
   const id = useId();
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
@@ -26,7 +27,7 @@ export function AuthGate({ store = useAuthStore, children }: Props) {
   async function onSend(e: FormEvent) {
     e.preventDefault();
     await sendMagicLink(email.trim());
-    setSent(true);
+    if (store.getState().error === null) setSent(true);
   }
 
   async function onVerify(e: FormEvent) {
@@ -53,7 +54,7 @@ export function AuthGate({ store = useAuthStore, children }: Props) {
             <label htmlFor={`${id}-code`} className={styles.label}>6-digit code</label>
             <input id={`${id}-code`} inputMode="numeric" pattern="[0-9]*" autoComplete="one-time-code" className={styles.input} value={code} onChange={(e) => setCode(e.target.value)} />
             <button type="submit" className={styles.primary}>Sign in with code</button>
-            <button type="button" className={styles.link} onClick={() => setSent(false)}>Use a different email</button>
+            <button type="button" className={styles.link} onClick={() => { clearError(); setSent(false); }}>Use a different email</button>
           </form>
         )}
         {error !== null ? <p role="alert" className={styles.error}>{error}</p> : null}

@@ -35,4 +35,28 @@ describe('AuthGate', () => {
     render(<AuthGate store={store}><p>App body</p></AuthGate>);
     expect(await screen.findByText('App body')).toBeInTheDocument();
   });
+
+  it('stays on the email step and shows the error when sending fails', async () => {
+    const { client, store } = fake(null);
+    (client.signInWithOtp as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ error: { message: 'Email rate limit exceeded' } });
+    render(<AuthGate store={store}><p>App body</p></AuthGate>);
+    await userEvent.type(await screen.findByLabelText('Email'), 'me@example.com');
+    await userEvent.click(screen.getByRole('button', { name: 'Send sign-in link' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Email rate limit exceeded');
+    expect(screen.getByLabelText('Email')).toBeInTheDocument();
+    expect(screen.queryByLabelText('6-digit code')).toBeNull();
+  });
+
+  it('clears a stale error when choosing a different email', async () => {
+    const { client, store } = fake(null);
+    (client.verifyOtp as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ error: { message: 'Token has expired' } });
+    render(<AuthGate store={store}><p>App body</p></AuthGate>);
+    await userEvent.type(await screen.findByLabelText('Email'), 'me@example.com');
+    await userEvent.click(screen.getByRole('button', { name: 'Send sign-in link' }));
+    await userEvent.type(await screen.findByLabelText('6-digit code'), '000000');
+    await userEvent.click(screen.getByRole('button', { name: 'Sign in with code' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Token has expired');
+    await userEvent.click(screen.getByRole('button', { name: 'Use a different email' }));
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
 });

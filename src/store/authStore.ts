@@ -23,6 +23,7 @@ export interface AuthState {
   sendMagicLink(email: string): Promise<void>;
   verifyCode(code: string): Promise<void>;
   signOut(): Promise<void>;
+  clearError(): void;
 }
 
 export function createAuthStore(client: AuthClient, onUser: (userId: string | null) => Promise<void>) {
@@ -67,6 +68,7 @@ export function createAuthStore(client: AuthClient, onUser: (userId: string | nu
       signOut: async () => {
         await client.signOut();
       },
+      clearError: () => set({ error: null }),
     };
   });
 }
