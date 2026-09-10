@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { CSSProperties } from 'react';
-import { formatDueDate, isOverdue, todayISO } from '../lib/dates';
+import { formatDueDate, isOverdue } from '../lib/dates';
 import { PALETTE } from '../lib/colors';
 import type { ChildrenMap } from '../domain/tree';
 import { addTodo, editTodo, moveTodoTo, removeTodo, toggleTodo } from '../store/actions';
@@ -29,7 +29,7 @@ export function TodoItem({ todo, map, depth }: Props) {
 
   const children = visibleChildren(map, todo.id, hideCompleted);
   const hasChildren = (map.get(todo.id)?.length ?? 0) > 0;
-  const overdue = isOverdue(todo, todayISO());
+  const overdue = isOverdue(todo, new Date());
   const railColor = PALETTE[todo.color].hex;
 
   return (
