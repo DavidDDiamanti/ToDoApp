@@ -6,6 +6,7 @@ export interface CreateInput {
   title: string;
   description?: string;
   due_date?: string | null;
+  due_time?: string | null;
   color?: ColorName;
 }
 
@@ -17,6 +18,7 @@ export function createTodo(input: CreateInput, parentId: string | null, map: Chi
     title: input.title.trim(),
     description: input.description ?? '',
     due_date: input.due_date ?? null,
+    due_time: input.due_time ?? null,
     color: input.color ?? 'slate',
     completed: false,
     sort_order: nextSortOrder(map, parentId),
@@ -26,7 +28,7 @@ export function createTodo(input: CreateInput, parentId: string | null, map: Chi
   };
 }
 
-export function updateFields(id: string, fields: Partial<Pick<Todo, 'title' | 'description' | 'due_date' | 'color'>>, now: string): Patch {
+export function updateFields(id: string, fields: Partial<Pick<Todo, 'title' | 'description' | 'due_date' | 'due_time' | 'color'>>, now: string): Patch {
   return { id, ...fields, updated_at: now };
 }
 

@@ -98,4 +98,14 @@ describe('migrateTodoState', () => {
     const state = { todos: {}, dirty: ['x'], lastPulledAt: 'T', collapsed: { a: true as const }, hideCompleted: true };
     expect(migrateTodoState(state, STORE_VERSION)).toEqual(state);
   });
+  it('adds due_time null to todos persisted before version 2', () => {
+    const { due_time, ...legacy } = mk('a');
+    void due_time;
+    const migrated = migrateTodoState({ todos: { a: legacy } }, 1);
+    expect(migrated.todos.a.due_time).toBeNull();
+    expect(migrated.todos.a).toEqual({ ...legacy, due_time: null });
+  });
+  it('STORE_VERSION is 2', () => {
+    expect(STORE_VERSION).toBe(2);
+  });
 });

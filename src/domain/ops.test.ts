@@ -12,7 +12,7 @@ describe('createTodo', () => {
     const map = buildChildrenMap([mk('a', null, { sort_order: 3 })]);
     const t = createTodo({ title: 'Shop' }, null, map, 'u1', NOW, 'new-id');
     expect(t).toEqual({
-      id: 'new-id', user_id: 'u1', parent_id: null, title: 'Shop', description: '', due_date: null,
+      id: 'new-id', user_id: 'u1', parent_id: null, title: 'Shop', description: '', due_date: null, due_time: null,
       color: 'slate', completed: false, sort_order: 4, deleted_at: null, created_at: NOW, updated_at: NOW,
     });
   });
@@ -24,11 +24,18 @@ describe('createTodo', () => {
     expect(t.due_date).toBe('2026-10-01');
     expect(t.sort_order).toBe(0);
   });
+  it('honours due_time', () => {
+    const t = createTodo({ title: 'x', due_date: '2026-10-01', due_time: '09:30' }, null, new Map(), 'u1', NOW, 'x');
+    expect(t.due_time).toBe('09:30');
+  });
 });
 
 describe('updateFields', () => {
   it('returns a patch with the changed fields and a new updated_at', () => {
     expect(updateFields('a', { title: 'New', color: 'blue' }, NOW)).toEqual({ id: 'a', title: 'New', color: 'blue', updated_at: NOW });
+  });
+  it('updateFields accepts due_time', () => {
+    expect(updateFields('a', { due_time: '08:00' }, NOW)).toEqual({ id: 'a', due_time: '08:00', updated_at: NOW });
   });
 });
 

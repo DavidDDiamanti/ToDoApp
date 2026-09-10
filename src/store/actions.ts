@@ -26,7 +26,7 @@ export function addTodo(input: CreateInput, parentId: string | null): string {
   return todo.id;
 }
 
-export function editTodo(id: string, fields: Partial<Pick<Todo, 'title' | 'description' | 'due_date' | 'color'>>): void {
+export function editTodo(id: string, fields: Partial<Pick<Todo, 'title' | 'description' | 'due_date' | 'due_time' | 'color'>>): void {
   useTodoStore.getState().applyPatches([updateFields(id, fields, nowISO())]);
 }
 

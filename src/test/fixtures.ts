@@ -13,6 +13,7 @@ export function mk(id: string, parent_id: string | null = null, overrides: Parti
     title: id,
     description: '',
     due_date: null,
+    due_time: null,
     color: 'slate',
     completed: false,
     sort_order: 0,

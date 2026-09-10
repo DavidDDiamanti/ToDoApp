@@ -3,7 +3,7 @@ import { createJSONStorage, persist, type StateStorage } from 'zustand/middlewar
 import type { Patch, Todo } from '../types';
 import { idbStorage } from './storage';
 
-export const STORE_VERSION = 1;
+export const STORE_VERSION = 2;
 
 export interface PersistedTodoState {
   todos: Record<string, Todo>;
@@ -31,10 +31,21 @@ function addDirty(dirty: string[], ids: string[]): string[] {
   return [...set];
 }
 
+type LegacyTodo = Omit<Todo, 'due_time'> & { due_time?: string | null };
+
+interface LegacyPersistedTodoState extends Omit<PersistedTodoState, 'todos'> {
+  todos: Record<string, LegacyTodo>;
+}
+
 export function migrateTodoState(persisted: unknown, _version: number): PersistedTodoState {
-  const p = (persisted ?? {}) as Partial<PersistedTodoState>;
+  const p = (persisted ?? {}) as Partial<LegacyPersistedTodoState>;
+  const legacyTodos = p.todos ?? {};
+  const todos: Record<string, Todo> = {};
+  for (const [id, t] of Object.entries(legacyTodos)) {
+    todos[id] = { ...t, due_time: t.due_time ?? null };
+  }
   return {
-    todos: p.todos ?? {},
+    todos,
     dirty: p.dirty ?? [],
     lastPulledAt: p.lastPulledAt ?? null,
     collapsed: p.collapsed ?? {},

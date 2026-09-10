@@ -7,6 +7,7 @@ export interface Todo {
   title: string;
   description: string;
   due_date: string | null;
+  due_time: string | null;
   color: ColorName;
   completed: boolean;
   sort_order: number;
