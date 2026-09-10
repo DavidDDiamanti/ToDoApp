@@ -1,0 +1,76 @@
+import { describe, expect, it } from 'vitest';
+import { createTodoStore, migrateTodoState, STORE_VERSION } from './todoStore';
+import { createMemoryStorage } from './storage';
+import { mk } from '../test/fixtures';
+
+function fresh() {
+  const storage = createMemoryStorage();
+  const store = createTodoStore({ storage, name: 'test-store' });
+  return { storage, store };
+}
+
+describe('todoStore', () => {
+  it('applies patches to existing todos and marks them dirty', () => {
+    const { store } = fresh();
+    store.getState().upsertTodo(mk('a'), false);
+    store.getState().applyPatches([{ id: 'a', title: 'Changed', updated_at: 'T2' }]);
+    expect(store.getState().todos.a.title).toBe('Changed');
+    expect(store.getState().todos.a.updated_at).toBe('T2');
+    expect(store.getState().dirty).toEqual(['a']);
+  });
+
+  it('ignores patches for unknown ids and does not duplicate dirty ids', () => {
+    const { store } = fresh();
+    store.getState().upsertTodo(mk('a'), true);
+    store.getState().applyPatches([{ id: 'ghost', updated_at: 'T' }, { id: 'a', updated_at: 'T3' }]);
+    expect(store.getState().todos.ghost).toBeUndefined();
+    expect(store.getState().dirty).toEqual(['a']);
+  });
+
+  it('clearDirty removes only ids whose updated_at matches the value seen at flush time', () => {
+    const { store } = fresh();
+    store.getState().upsertTodo(mk('a', null, { updated_at: 'T1' }), true);
+    store.getState().upsertTodo(mk('b', null, { updated_at: 'T1' }), true);
+    store.getState().applyPatches([{ id: 'b', updated_at: 'T2' }]);
+    store.getState().clearDirty(['a', 'b'], { a: 'T1', b: 'T1' });
+    expect(store.getState().dirty).toEqual(['b']);
+  });
+
+  it('persists state to storage and rehydrates it', async () => {
+    const { storage, store } = fresh();
+    store.getState().upsertTodo(mk('a'), true);
+    store.getState().setHideCompleted(true);
+    await new Promise((r) => setTimeout(r, 0));
+    const again = createTodoStore({ storage, name: 'test-store' });
+    await again.persist.rehydrate();
+    expect(again.getState().todos.a.id).toBe('a');
+    expect(again.getState().dirty).toEqual(['a']);
+    expect(again.getState().hideCompleted).toBe(true);
+  });
+
+  it('toggleCollapsed and reset behave', () => {
+    const { store } = fresh();
+    store.getState().toggleCollapsed('a');
+    expect(store.getState().collapsed).toEqual({ a: true });
+    store.getState().toggleCollapsed('a');
+    expect(store.getState().collapsed).toEqual({});
+    store.getState().upsertTodo(mk('a'), true);
+    store.getState().reset();
+    expect(store.getState().todos).toEqual({});
+    expect(store.getState().dirty).toEqual([]);
+  });
+});
+
+describe('migrateTodoState', () => {
+  it('fills missing fields when migrating from an older version', () => {
+    const migrated = migrateTodoState({ todos: { a: mk('a') } }, 0);
+    expect(migrated.dirty).toEqual([]);
+    expect(migrated.lastPulledAt).toBeNull();
+    expect(migrated.collapsed).toEqual({});
+    expect(migrated.hideCompleted).toBe(false);
+  });
+  it('returns current-version state untouched', () => {
+    const state = { todos: {}, dirty: ['x'], lastPulledAt: 'T', collapsed: { a: true as const }, hideCompleted: true };
+    expect(migrateTodoState(state, STORE_VERSION)).toEqual(state);
+  });
+});
