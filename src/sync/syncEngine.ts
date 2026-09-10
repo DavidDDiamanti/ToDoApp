@@ -128,6 +128,8 @@ export function createSyncEngine(remote: TodoRemote, store: TodoStore, status: S
     unsubscribe?.();
     unsubscribe = null;
     userId = null;
+    inFlight = null;
+    rerun = false;
   }
 
   function sync(): Promise<void> {
@@ -136,7 +138,9 @@ export function createSyncEngine(remote: TodoRemote, store: TodoStore, status: S
       rerun = true;
       return inFlight;
     }
+    const g = gen;
     inFlight = run().finally(() => {
+      if (g !== gen) return;
       inFlight = null;
       if (rerun) {
         rerun = false;
@@ -150,9 +154,16 @@ export function createSyncEngine(remote: TodoRemote, store: TodoStore, status: S
     if (userId === uid && unsubscribe) return;
     stop();
     userId = uid;
-    unsubscribe = remote.subscribe(uid, applyRemoteRow, (channelStatus) => {
-      if (channelStatus === 'SUBSCRIBED') void sync();
-    });
+    const g = gen;
+    unsubscribe = remote.subscribe(
+      uid,
+      (row) => {
+        if (g === gen) applyRemoteRow(row);
+      },
+      (channelStatus) => {
+        if (channelStatus === 'SUBSCRIBED') void sync();
+      },
+    );
   }
 
   function isRunning(): boolean {

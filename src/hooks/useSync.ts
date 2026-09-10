@@ -49,6 +49,7 @@ export function useSync(engine: SyncEngine = syncEngine): void {
       window.removeEventListener('offline', onOffline);
       document.removeEventListener('visibilitychange', onVisible);
       engine.stop();
+      useSyncStatus.getState().set('pending', null);
     };
   }, [engine, userId, hydrated]);
 }

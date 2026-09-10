@@ -163,4 +163,53 @@ describe('createSyncEngine', () => {
     expect(store.getState().dirty).toEqual(['a']);
     expect(status.getState().state).toBe('error');
   });
+
+  it('ignores realtime rows from a previous subscription after a user switch', () => {
+    const { store, engine, remote } = harness();
+    engine.start('u1');
+    const firstOnRow = (remote.subscribe as ReturnType<typeof vi.fn>).mock.calls[0][1] as (row: Todo) => void;
+    engine.stop();
+    engine.start('u2');
+    firstOnRow(mk('stale', null, { updated_at: '2026-09-10T10:00:00.000Z' }));
+    expect(store.getState().todos.stale).toBeUndefined();
+  });
+
+  it('lets the next user sync while a stopped run is still in flight', async () => {
+    const { engine, remote } = harness();
+    const d = deferred<Todo[]>();
+    (remote.fetchSince as ReturnType<typeof vi.fn>).mockReturnValueOnce(d.promise);
+    engine.start('u1');
+    const old = engine.sync();
+    engine.stop();
+    engine.start('u2');
+    const fresh = engine.sync();
+    // Let both `run()`s reach their post-flush generation check. The old run's
+    // captured generation no longer matches (two stop()/start() calls bumped
+    // it), so it bails out before ever calling fetchSince; only the fresh run
+    // for 'u2' does. Hence 1, not 2, at this checkpoint.
+    await new Promise((r) => setTimeout(r, 0));
+    expect(remote.fetchSince).toHaveBeenCalledTimes(1);
+    d.resolve([]);
+    await old;
+    await fresh;
+    await engine.sync();
+    // The third sync() starts a genuine new run (inFlight was cleared after
+    // `fresh` settled), adding one more fetchSince call: 2 total, not 3 -
+    // the stale 'old' run never contributes a call.
+    expect(remote.fetchSince).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not clear dirty rows when an upsert resolves after stop()', async () => {
+    const { store, engine, remote, status } = harness();
+    const d = deferred<void>();
+    (remote.upsert as ReturnType<typeof vi.fn>).mockReturnValueOnce(d.promise);
+    store.getState().upsertTodo(mk('a'), true);
+    engine.start('u1');
+    const running = engine.sync();
+    engine.stop();
+    d.resolve();
+    await running;
+    expect(store.getState().dirty).toEqual(['a']);
+    expect(status.getState().state).toBe('pending');
+  });
 });
