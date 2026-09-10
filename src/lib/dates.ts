@@ -15,9 +15,7 @@ export function isOverdue(todo: Pick<Todo, 'due_date' | 'completed'>, today: str
   return todo.due_date !== null && !todo.completed && todo.due_date < today;
 }
 
-const dueDateFormatter = new Intl.DateTimeFormat('en-US', { dateStyle: 'medium' });
-
-export function formatDueDate(iso: string): string {
+export function formatDueDate(iso: string, locale?: string): string {
   const [y, m, d] = iso.split('-').map(Number);
-  return dueDateFormatter.format(new Date(y, m - 1, d));
+  return new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(new Date(y, m - 1, d));
 }

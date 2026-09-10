@@ -55,8 +55,10 @@ describe('TodoTree', () => {
   it('shows the due date in a locale-formatted form, not the raw ISO string', () => {
     seed(mk('a', null, { title: 'Alpha', due_date: '2026-01-05' }));
     render(<TodoTree />);
-    expect(screen.getByText('Jan 5, 2026')).toBeInTheDocument();
-    expect(screen.queryByText('2026-01-05')).toBeNull();
+    const time = screen.getByRole('treeitem', { name: /alpha/i }).querySelector('time');
+    expect(time).toHaveAttribute('dateTime', '2026-01-05');
+    expect(time?.textContent).not.toBe('');
+    expect(time?.textContent).not.toBe('2026-01-05');
   });
 
   it('hides completed subtrees when hideCompleted is on', () => {

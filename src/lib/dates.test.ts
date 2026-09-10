@@ -31,6 +31,10 @@ describe('isOverdue', () => {
 
 describe('formatDueDate', () => {
   it('formats an ISO date using a locale-aware format, not the raw string', () => {
-    expect(formatDueDate('2026-01-05')).toBe('Jan 5, 2026');
+    expect(formatDueDate('2026-01-05', 'en-US')).toBe('Jan 5, 2026');
+  });
+
+  it('formats using the given locale', () => {
+    expect(formatDueDate('2026-01-05', 'de-DE')).toBe('05.01.2026');
   });
 });
