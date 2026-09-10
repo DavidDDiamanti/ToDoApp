@@ -94,6 +94,11 @@ export function createSyncEngine(remote: TodoRemote, store: TodoStore, status: S
     const next = maxUpdatedAt(rows, store.getState().lastPulledAt);
     if (next !== null) {
       const nowIso = new Date().toISOString();
+      // Clamp to local now so a remote row with a future/skewed timestamp can't push
+      // the cursor ahead of this device's clock. If the local clock runs slow, the
+      // cursor pins at local now and the next pull's overlap window stays at
+      // skew + 60s (see overlapSince) instead of shrinking — correctness is preserved,
+      // just with a wider (harmless) re-fetch window until the clocks reconverge.
       store.getState().setLastPulledAt(newerThan(next, nowIso) ? nowIso : next);
     }
   }

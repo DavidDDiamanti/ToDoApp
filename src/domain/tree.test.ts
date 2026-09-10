@@ -25,10 +25,19 @@ describe('buildChildrenMap', () => {
   });
 
   it('tie-breaks siblings by created_at instant, not string form', () => {
-    const early = mk('early', null, { sort_order: 0, created_at: '2026-01-01T00:00:00+00:00' });
-    const late = mk('late', null, { sort_order: 0, created_at: '2026-01-01T00:00:01.000Z' });
+    // String order and instant order disagree here: lexicographically '+01:00' sorts
+    // after 'Z', but as instants 01:00:00+01:00 (= 00:00:00Z) is earlier than 00:00:30Z.
+    const early = mk('early', null, { sort_order: 0, created_at: '2026-01-01T01:00:00+01:00' });
+    const late = mk('late', null, { sort_order: 0, created_at: '2026-01-01T00:00:30Z' });
     const map = buildChildrenMap([late, early]);
     expect(ids(map.get(null))).toEqual(['early', 'late']);
+  });
+
+  it('tie-breaks siblings by id when sort_order and created_at instant are equal', () => {
+    const b = mk('b', null, { sort_order: 0, created_at: '2026-01-01T01:00:00+01:00' });
+    const a = mk('a', null, { sort_order: 0, created_at: '2026-01-01T00:00:00Z' });
+    const map = buildChildrenMap([b, a]);
+    expect(ids(map.get(null))).toEqual(['a', 'b']);
   });
 
   it('excludes tombstoned items', () => {
