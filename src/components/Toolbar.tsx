@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { addTodo } from '../store/actions';
+import { useAuthStore } from '../store/authStore';
 import { useTodoStore } from '../store/todoStore';
 import { PlusIcon } from './icons';
 import { TodoEditor } from './TodoEditor';
@@ -8,6 +9,7 @@ import styles from './Toolbar.module.css';
 export function Toolbar() {
   const hideCompleted = useTodoStore((s) => s.hideCompleted);
   const setHideCompleted = useTodoStore((s) => s.setHideCompleted);
+  const signOut = useAuthStore((s) => s.signOut);
   const [adding, setAdding] = useState(false);
 
   return (
@@ -22,6 +24,7 @@ export function Toolbar() {
           <PlusIcon />
           <span>New item</span>
         </button>
+        <button type="button" className={styles.secondary} onClick={() => void signOut()}>Sign out</button>
       </div>
       {adding ? (
         <TodoEditor

@@ -10,4 +10,5 @@
   transition: filter var(--motion) var(--ease);
 }
 .primary:hover { filter: brightness(1.08); }
+.secondary { min-height: var(--touch); padding: 0 var(--space-3); background: transparent; border: 1px solid var(--line); border-radius: var(--radius); color: var(--ink); }
 @media (max-width: 480px) { .toggle span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); } }
