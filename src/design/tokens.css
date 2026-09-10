@@ -1,0 +1,73 @@
+:root {
+  color-scheme: light dark;
+
+  /* chrome */
+  --bg: #F7F8F4;
+  --surface: #FFFFFF;
+  --ink: #1C2430;
+  --ink-muted: #5B6470;
+  --line: #DCE0D9;
+  --accent: #2F6F4E;
+  --on-accent: #FFFFFF;
+  --danger: #B42318;
+  --on-danger: #FFFFFF;
+  --focus: #2F6F4E;
+  --overdue: #B42318;
+
+  /* item colours (data, not chrome) */
+  --todo-slate: #64748B;
+  --todo-red: #DC2626;
+  --todo-orange: #EA580C;
+  --todo-yellow: #CA8A04;
+  --todo-green: #16A34A;
+  --todo-teal: #0D9488;
+  --todo-blue: #2563EB;
+  --todo-purple: #7C3AED;
+
+  /* type */
+  --font-body: "Segoe UI Variable Text", "Segoe UI", Roboto, system-ui, sans-serif;
+  --font-display: "Segoe UI Variable Display", "Segoe UI", Roboto, system-ui, sans-serif;
+  --text-sm: 0.875rem;
+  --text-md: 1rem;
+  --text-lg: 1.25rem;
+  --text-xl: 1.75rem;
+  --leading: 1.5;
+
+  /* space and shape */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --radius: 8px;
+  --touch: 44px;
+  --rail: 4px;
+  --indent: 20px;
+
+  /* motion */
+  --motion: 160ms;
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #141A1F;
+    --surface: #1C242B;
+    --ink: #EEF1EA;
+    --ink-muted: #A5AEB3;
+    --line: #2E3942;
+    --accent: #7CC6A0;
+    --on-accent: #0F1A14;
+    --danger: #F08A7E;
+    --on-danger: #1A0805;
+    --focus: #7CC6A0;
+    --overdue: #F08A7E;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion: 0ms;
+  }
+}
