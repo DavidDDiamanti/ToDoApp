@@ -12,3 +12,7 @@
 .primary:hover { filter: brightness(1.08); }
 .secondary { min-height: var(--touch); padding: 0 var(--space-3); background: transparent; border: 1px solid var(--line); border-radius: var(--radius); color: var(--ink); }
 @media (max-width: 480px) { .toggle span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); } }
+.status { font-size: var(--text-sm); color: var(--ink-muted); display: inline-flex; align-items: center; gap: var(--space-1); }
+.status::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--ink-muted); }
+.status[data-state='synced']::before { background: var(--accent); }
+.status[data-state='error']::before { background: var(--danger); }
