@@ -74,5 +74,11 @@
 
 @media (max-width: 480px) {
   .actions { display: none; }
-  .item:focus-within > .row .actions, .row:hover .actions { display: flex; }
+  .item[data-details='true'] > .row { flex-wrap: wrap; }
+  .item[data-details='true'] > .row .actions {
+    display: flex;
+    flex-basis: 100%;
+    justify-content: flex-end;
+    padding-left: var(--touch);
+  }
 }

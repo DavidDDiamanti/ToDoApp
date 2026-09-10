@@ -32,8 +32,8 @@ export function TodoItem({ todo, map, depth }: Props) {
       role="treeitem"
       aria-label={todo.title}
       aria-expanded={hasChildren ? !collapsed : undefined}
-      aria-selected={false}
       data-overdue={overdue ? 'true' : undefined}
+      data-details={showDetails ? 'true' : undefined}
       data-completed={todo.completed ? 'true' : undefined}
       className={styles.item}
       style={{ '--item-color': railColor } as CSSProperties}

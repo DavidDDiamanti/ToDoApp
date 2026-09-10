@@ -68,4 +68,14 @@ describe('TodoTree', () => {
     await userEvent.click(screen.getByRole('button', { name: /show details for alpha/i }));
     expect(screen.getByText('Bring the list')).toBeInTheDocument();
   });
+
+  it('marks the item while its details are shown so narrow screens can reveal the actions', async () => {
+    seed(mk('a', null, { title: 'Alpha' }));
+    render(<TodoTree />);
+    const item = screen.getByRole('treeitem', { name: 'Alpha' });
+    expect(item).not.toHaveAttribute('data-details');
+    await userEvent.click(screen.getByRole('button', { name: /show details for alpha/i }));
+    expect(item).toHaveAttribute('data-details', 'true');
+    expect(item).not.toHaveAttribute('aria-selected');
+  });
 });
