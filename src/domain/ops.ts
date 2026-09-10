@@ -1,6 +1,6 @@
 import type { ColorName } from '../lib/colors';
 import type { Patch, Todo } from '../types';
-import { getAncestorIds, getDescendantIds, isDescendant, nextSortOrder, type ChildrenMap } from './tree';
+import { getAncestorIds, getDescendantIds, nextSortOrder, type ChildrenMap } from './tree';
 
 export interface CreateInput {
   title: string;
@@ -59,12 +59,4 @@ export function deleteAndPromote(byId: Record<string, Todo>, map: ChildrenMap, i
     updated_at: now,
   }));
   return [...promoted, { id, deleted_at: now, updated_at: now }];
-}
-
-export function moveTodo(byId: Record<string, Todo>, map: ChildrenMap, id: string, newParentId: string | null, now: string): Patch[] {
-  if (!byId[id]) return [];
-  if (newParentId !== null && (newParentId === id || isDescendant(map, newParentId, id))) {
-    throw new Error('Cannot move an item under itself or one of its children');
-  }
-  return [{ id, parent_id: newParentId, sort_order: nextSortOrder(map, newParentId), updated_at: now }];
 }

@@ -41,8 +41,15 @@ describe('actions', () => {
     const a = addTodo({ title: 'A' }, null);
     const b = addTodo({ title: 'B' }, null);
     editTodo(a, { title: 'A2', color: 'blue' });
-    moveTodoTo(b, a);
+    moveTodoTo(b, { parentId: a, index: 0 });
     expect(useTodoStore.getState().todos[a].title).toBe('A2');
     expect(useTodoStore.getState().todos[b].parent_id).toBe(a);
+  });
+
+  it('self target is a no-op', () => {
+    const a = addTodo({ title: 'A' }, null);
+    const before = useTodoStore.getState().todos[a];
+    moveTodoTo(a, { parentId: a, index: 0 });
+    expect(useTodoStore.getState().todos[a]).toEqual(before);
   });
 });

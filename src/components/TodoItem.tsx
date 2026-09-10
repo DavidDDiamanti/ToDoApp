@@ -124,7 +124,17 @@ export function TodoItem({ todo, map, depth }: Props) {
         />
       ) : null}
       {mode === 'move' ? (
-        <MoveMenu todo={todo} map={map} todos={todos} onMove={(p) => { moveTodoTo(todo.id, p); setMode('view'); }} onCancel={() => setMode('view')} />
+        <MoveMenu
+          todo={todo}
+          map={map}
+          todos={todos}
+          onMove={(p) => {
+            const bucket = (map.get(p) ?? []).filter((t) => t.id !== todo.id);
+            moveTodoTo(todo.id, { parentId: p, index: bucket.length });
+            setMode('view');
+          }}
+          onCancel={() => setMode('view')}
+        />
       ) : null}
       {mode === 'delete' ? (
         <DeleteDialog

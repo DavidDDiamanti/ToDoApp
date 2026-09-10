@@ -1,5 +1,6 @@
 import { nowISO } from '../lib/dates';
-import { createTodo, deleteAndPromote, deleteSubtree, moveTodo, toggleComplete, updateFields, type CreateInput } from '../domain/ops';
+import { createTodo, deleteAndPromote, deleteSubtree, toggleComplete, updateFields, type CreateInput } from '../domain/ops';
+import { placeTodo, type Placement } from '../domain/place';
 import { buildChildrenMap } from '../domain/tree';
 import type { Todo } from '../types';
 import { useTodoStore } from './todoStore';
@@ -41,7 +42,7 @@ export function removeTodo(id: string, mode: 'subtree' | 'promote'): void {
   s.applyPatches(mode === 'subtree' ? deleteSubtree(map, id, now) : deleteAndPromote(s.todos, map, id, now));
 }
 
-export function moveTodoTo(id: string, parentId: string | null): void {
+export function moveTodoTo(id: string, target: Placement): void {
   const { s, map } = snapshot();
-  s.applyPatches(moveTodo(s.todos, map, id, parentId, nowISO()));
+  s.applyPatches(placeTodo(s.todos, map, id, target, nowISO()));
 }

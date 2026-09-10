@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createTodo, deleteAndPromote, deleteSubtree, moveTodo, toggleComplete, updateFields } from './ops';
+import { createTodo, deleteAndPromote, deleteSubtree, toggleComplete, updateFields } from './ops';
 import { buildChildrenMap } from './tree';
 import { byId, mk } from '../test/fixtures';
 import type { Patch } from '../types';
@@ -79,20 +79,5 @@ describe('deleteAndPromote', () => {
     const all = byId(mk('a', null, { sort_order: 1 }), mk('k', 'a'));
     const patches = deleteAndPromote(all, buildChildrenMap(Object.values(all)), 'a', NOW);
     expect(find(patches, 'k')?.parent_id).toBeNull();
-  });
-});
-
-describe('moveTodo', () => {
-  const all = byId(mk('a'), mk('b', 'a'), mk('c', 'b'), mk('t', null, { sort_order: 4 }), mk('t1', 't', { sort_order: 7 }));
-  const map = buildChildrenMap(Object.values(all));
-  it('moves under a new parent at the end of its siblings', () => {
-    expect(moveTodo(all, map, 'b', 't', NOW)).toEqual([{ id: 'b', parent_id: 't', sort_order: 8, updated_at: NOW }]);
-  });
-  it('moves to the top level', () => {
-    expect(moveTodo(all, map, 'c', null, NOW)).toEqual([{ id: 'c', parent_id: null, sort_order: 5, updated_at: NOW }]);
-  });
-  it('rejects moving under itself or a descendant', () => {
-    expect(() => moveTodo(all, map, 'a', 'a', NOW)).toThrow(/under itself/);
-    expect(() => moveTodo(all, map, 'a', 'c', NOW)).toThrow(/under itself/);
   });
 });
