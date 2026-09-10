@@ -121,7 +121,7 @@ All rules are pure functions over the flat `Record<id, Todo>` and return `Patch[
 - **Toolbar.** New top-level item, hide-completed toggle, sync status indicator (synced / pending / offline), sign out.
 - **TodoTree.** Derives the children map from the store with `useMemo` and renders the root bucket.
 - **TodoItem.** One row: collapse chevron (only when it has children), checkbox, colour band, title, due-date badge (red when overdue), actions (edit, add child, move, delete). Renders its children recursively when expanded. Expanding shows the description.
-- **TodoEditor.** Inline editor for title, description, due date and colour. Enter saves, Escape cancels, blur saves. Fields have visible labels.
+- **TodoEditor.** Inline editor for title, description, due date and colour. Enter in the title field or the Save button saves; Escape or the Cancel button cancels. Fields have visible labels. (Blur-to-save was dropped: it fires when the user clicks Cancel and is unreliable on Android keyboards.)
 - **ColorPicker.** Eight swatches with accessible names.
 - **MoveMenu.** A select listing "Top level" and every non-descendant item, indented by depth.
 - **DeleteDialog.** Native `<dialog>` with three actions: "Delete children too", "Keep children, move them up", "Cancel". Only shown when the item has children; otherwise delete is immediate.
