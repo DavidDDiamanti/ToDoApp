@@ -182,3 +182,35 @@ Accepted limitation: two devices editing the same row while both offline resolve
 5. Create the GitHub repository and add it as the remote.
 6. Import the repository into Vercel and set the two environment variables; add the Vercel domain to the redirect URLs.
 7. Install the app on both devices and sign in on each.
+
+## 12. v2 changes (2026-09-11)
+
+Requested after the first local run, before merging PR #1. Decisions were taken with the user in a plan-mode conversation.
+
+### 12.1 Due time
+
+- `Todo` gains `due_time: string | null` (`HH:MM`, 24-hour, local time). Stored in Postgres as `text` with a format check so the `<input type="time">` value round-trips unchanged. Migration `supabase/migrations/0002_due_time.sql`; a time is never stored without a date.
+- The editor shows "Due date" and "Due time" side by side. Either may be empty.
+- Resolution rule at save: if a time is set and the date is empty, the date becomes the next occurrence of that time. At 16:00 entering 15:37 gives tomorrow; entering 16:30 gives today; the same minute counts as passed. Month and year rollover follow the calendar. Pure function `resolveDueDate(date, time, now)` in `src/lib/dates.ts`.
+- Overdue: without a time, unchanged (overdue once the day has ended). With a time, overdue once the local instant `date + time` is earlier than now.
+- Display: date only as before (`dateStyle: medium`); with time, `dateStyle: medium` plus `timeStyle: short` in the browser locale. `<time dateTime>` carries `YYYY-MM-DD` or `YYYY-MM-DDTHH:MM`.
+- Persisted store version becomes 2; migration fills `due_time: null` on older rows. Rows pulled from a project that has not run migration 0002 are normalised to `due_time: null`.
+
+### 12.2 Drag and drop
+
+- Every row has an always-visible 44 px grip handle at its left edge on all screen sizes. Dragging starts on the handle only (Pointer Events, no library); `touch-action: none` on the handle so a finger drag does not scroll, while the rest of the row scrolls as usual.
+- Drop zones on a target row: top quarter inserts before it, bottom quarter inserts after it (both as a sibling of the target), the middle half drops **onto** it and makes the dragged item the target's last child. The dragged item and its descendants are never valid targets.
+- Ordering uses a midpoint `sort_order` between the new neighbours; when the gap falls under `1e-6` the whole sibling bucket is renumbered 0..n. Moves produce patches through the existing store so they sync like any edit.
+- Keyboard parity on the handle: Alt+Up and Alt+Down swap with the previous or next sibling, Alt+Right nests under the previous sibling as its last child, Alt+Left moves the item out to sit right after its current parent. A polite live region announces "Moved {title} under {parent}, position i of n" (or "to the top level") and "Cannot move {title} {direction}" at boundaries. Focus returns to the handle after the row remounts.
+- Visuals: the dragged row fades to 45 % opacity; before and after show a 3 px accent line at the top or bottom edge of the target row; onto shows an accent tint with a 2 px inset ring. Transitions use `--motion`, so reduced motion disables them. Text selection is suppressed while dragging.
+- The Move button, `MoveMenu` and the `'move'` editor mode are removed.
+- Not included: auto-scroll when dragging near the viewport edge (documented as a known issue).
+
+### 12.3 Expired sign-in link
+
+- Bug: supabase-js swallows the redirect error from an expired or reused magic link and leaves `#error=access_denied&error_code=otp_expired&error_description=…` in the URL; the app never read it, so the sign-in page showed nothing.
+- Fix: on auth init, parse `error`, `error_code` and `error_description` from the hash (or search) once, clear the fragment with `history.replaceState`, and show "That sign-in link has expired or was already used. Enter your email to get a new one." for `otp_expired`, otherwise the description. The message survives the initial signed-out event, disappears on sign-in, on "Use a different email", and when a new link is sent. The URL source is injectable for tests.
+
+### 12.4 Manual step added
+
+Run `supabase/migrations/0002_due_time.sql` in the SQL editor before starting the v2 client; the client writes every column of the row, so saves fail until the column exists.
