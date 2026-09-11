@@ -217,3 +217,34 @@ Requested after the first local run, before merging PR #1. Decisions were taken 
 ### 12.4 Manual step added
 
 Run `supabase/migrations/0002_due_time.sql` in the SQL editor before starting the v2 client; the client writes every column of the row, so saves fail until the column exists.
+
+## 13. v3 UI polish (2026-09-11)
+
+Requested after the first merge, before deployment. Decisions were taken with the user in a plan-mode conversation.
+
+### 13.1 Editors
+
+- Only one editor is open at a time anywhere in the app: the toolbar's "New item", an item's "Edit" or an item's "Add item under". The open editor and the pending discard prompt live in a small non-persisted UI store (`src/store/uiStore.ts`); components subscribe to primitive selectors only.
+- Pressing the button that opened an editor again closes it. Pressing a different editor button while one is open is a close request for the first; if the close proceeds, the requested editor opens.
+- A close request (toggle button, Cancel, Escape, a pointer press outside the editor, or displacement by another editor) closes directly when nothing changed. When the title, description, due date, due time or colour differ from the initial values (title and description compared trimmed), a "Discard changes?" dialog offers Discard and Keep editing. Saving never asks.
+- State machine (O open editor, D dirty, P prompt): requestOpen(k) with O empty opens k; same key and clean closes; same key and dirty prompts with no next; other key and clean displaces; other key and dirty prompts with next = k; requestClose closes when clean, prompts when dirty; confirmDiscard opens the remembered next (or none) and clears dirtiness; keepEditing clears the prompt; requests while a prompt is up are ignored.
+- The outside-press listener is one `document` `pointerdown` listener in `src/hooks/useClickOutsideEditor.ts`, mounted once; it ignores targets inside the editor form, its own toggle button and any open dialog.
+
+### 13.2 Active item and actions
+
+- Pressing an item's title toggles its details and makes it the active item. Exactly one item is active app-wide; only the active item renders its Edit, Add item under and Delete buttons (they are not in the DOM otherwise, so they are never in the tab order when hidden). Other items keep their details open but lose their buttons. Pressing the active item's title again hides its details; it stays active.
+- Applies on all screen sizes; the narrow-screen wrap layout keys on the active state.
+
+### 13.3 Dialogs
+
+- `ConfirmDialog` (heading, body, primary with danger or primary tone, optional extra, secondary) replaces the internals of `DeleteDialog`: backdrop, `role="dialog"`, Tab trap, Escape → secondary. Escape and Tab stop propagating; backdrop dismissal requires the pointer press to have started on the backdrop.
+- Deleting any item asks first. Leaves: "Delete '{title}'?", "It will be removed from your list.", Delete / Cancel. Parents keep the three-way dialog (delete children too, keep children and move them up, cancel). Section 6's statements about immediate leaf deletion and a native `<dialog>` are superseded.
+
+### 13.4 Row layout, depth shading, outline
+
+- Row order: grip handle, checkbox (adjacent, no gap), title with due time, chevron (only for items with children), actions.
+- Each item has a `.body` wrapper (row, editor, dialog, details) with a background mixed from the surface towards the ink colour by 2 % per nesting level, capped at level 6, and a 1 px border 16 % further towards ink. The details block is 2 % darker again with a top border. Children sit outside the body in their own outlined items. In dark mode the same mixing lightens deeper levels. Contrast of `--ink-muted` on the deepest details block: 4.55:1 light, 4.62:1 dark (a 3 % step would fail).
+
+### 13.5 Hover text
+
+Every button, checkbox and colour swatch carries a native `title`: Move item, Expand children / Collapse children, Mark complete / Mark incomplete, Show details / Hide details, Edit item, Add item under, Delete item, New item, Sign out, Hide completed items, the editor's submit label and Cancel, the colour name, and each dialog button's label. Accessible names are unchanged.
