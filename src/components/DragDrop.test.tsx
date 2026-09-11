@@ -1,11 +1,14 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { MockInstance } from 'vitest';
 import { TodoTree } from './TodoTree';
 import type { RectReader } from '../dnd/hitTest';
 import { useDragStore } from '../dnd/dragStore';
 import { useTodoStore } from '../store/todoStore';
+import { useUiStore } from '../store/uiStore';
 import { mk } from '../test/fixtures';
+import { pressTitle } from '../test/press';
 
 const ROW = 44;
 const TOPS: Record<string, number> = { a: 0, b: ROW, c: ROW * 2 };
@@ -65,6 +68,7 @@ function handlers(spy: ListenerSpy) {
 beforeEach(() => {
   useTodoStore.getState().reset();
   useDragStore.setState({ draggingId: null, indicator: null, announcement: { text: '', seq: 0 }, focusId: null });
+  useUiStore.getState().reset();
 });
 
 afterEach(() => {
@@ -298,6 +302,21 @@ describe('pointer drag and drop', () => {
     expect(counts(add)).toEqual({ pointermove: 1, pointerup: 1, pointercancel: 1, keydown: 1, blur: 1 });
     expect(counts(remove)).toEqual(counts(add));
     expect(handlers(remove)).toEqual(handlers(add));
+  });
+
+  it("does not start a drag while the item's editor is open", async () => {
+    seedFlat();
+    render(<TodoTree getRect={getRect} />);
+    await pressTitle('a');
+    await userEvent.click(screen.getByRole('button', { name: 'Edit a' }));
+    expect(screen.getByRole('form', { name: 'Edit a' })).toBeInTheDocument();
+
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Move a' }), { button: 0, pointerId: 1, clientY: 10 });
+    fireEvent.pointerMove(window, { pointerId: 1, clientY: 80 });
+
+    expect(item('a')).not.toHaveAttribute('data-dragging');
+    expect(screen.getByRole('tree')).not.toHaveAttribute('data-dragging');
+    expect(item('b')).not.toHaveAttribute('data-drop');
   });
 
   it('notifies the drag store once for two moves inside the same band', () => {

@@ -14,7 +14,9 @@ export function useClickOutsideEditor(): void {
       // Any open dialog owns the pointer: its backdrop is outside the editor but must not close it.
       if (document.querySelector('[role="dialog"]') !== null) return;
       const t = e.target;
-      if (t instanceof Element && t.closest('[data-editor-root], [data-editor-toggle], [role="dialog"]') !== null) return;
+      // A grip press is a move gesture, not a dismissal: the row it belongs to may be the one
+      // being edited, and closing the editor underneath the pointer loses the draft.
+      if (t instanceof Element && t.closest('[data-editor-root], [data-editor-toggle], [data-drag-handle], [role="dialog"]') !== null) return;
       s.requestClose();
     };
     document.addEventListener('pointerdown', onDown);

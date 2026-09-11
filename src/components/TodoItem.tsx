@@ -81,6 +81,10 @@ export function TodoItem({ todo, map, depth, tree }: Props) {
     const key = moveKeyFromArrow(e.key);
     if (key === null) return;
     e.preventDefault();
+    if (editorKind !== null) {
+      useDragStore.getState().announce(`Finish editing ${todo.title} before moving it`);
+      return;
+    }
     const currentMap = buildChildrenMap(Object.values(useTodoStore.getState().todos));
     const hidden = useTodoStore.getState().hideCompleted;
     const isVisible = hidden ? (t: Todo) => !t.completed : () => true;
@@ -123,8 +127,14 @@ export function TodoItem({ todo, map, depth, tree }: Props) {
             aria-label={`Move ${todo.title}`}
             title={TIP.move}
             aria-describedby={tree.hintId}
+            data-drag-handle
             onKeyDown={onHandleKeyDown}
-            onPointerDown={(e) => tree.onHandlePointerDown(todo.id, e)}
+            onPointerDown={(e) => {
+              // The row cannot move while its own editor is open: the editor would be torn
+              // out of the tree mid-gesture. Press ignored; the keyboard path announces why.
+              if (editorKind !== null) return;
+              tree.onHandlePointerDown(todo.id, e);
+            }}
           >
             <GripIcon />
           </button>
@@ -193,7 +203,10 @@ export function TodoItem({ todo, map, depth, tree }: Props) {
                 aria-expanded={editorKind === 'add'}
                 onClick={() => {
                   useUiStore.getState().requestOpen({ kind: 'add', id: todo.id });
-                  if (collapsed) toggleCollapsed(todo.id);
+                  // requestOpen is a request: a discard prompt or a dirty editor can refuse it.
+                  // Only reveal the new child's editor when there is one to reveal.
+                  const opened = editorKindFor(useUiStore.getState().openEditor, todo.id) === 'add';
+                  if (opened && collapsed) toggleCollapsed(todo.id);
                 }}
               >
                 <PlusIcon />

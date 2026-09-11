@@ -31,14 +31,14 @@
   align-items: center;
   gap: 0;
   min-height: var(--touch);
-  border-radius: var(--radius);
+  border-radius: calc(var(--radius) - 1px);
   transition: background var(--motion) var(--ease), box-shadow var(--motion) var(--ease);
 }
 .item[data-dragging='true'] > .body > .row { opacity: 0.45; }
 .item[data-drop='before'] > .body > .row { box-shadow: inset 0 3px 0 0 var(--accent); }
 .item[data-drop='after'] > .body > .row { box-shadow: inset 0 -3px 0 0 var(--accent); }
-/* 14% is the ceiling: above it --ink-muted on the tint drops below 4.5:1 (4.58:1 at 14%).
-   Mixed into --surface, not transparent, so it covers the depth shading underneath. */
+/* 14% accent into --surface: about 4.9:1 light, 5.2:1 dark for --ink-muted; over the depth-6 body a
+   transparent mix would fall to about 4.0:1. */
 .item[data-drop='inside'] > .body > .row {
   background: color-mix(in srgb, var(--accent) 14%, var(--surface));
   box-shadow: inset 0 0 0 2px var(--accent);

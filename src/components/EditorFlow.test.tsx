@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { Toolbar } from './Toolbar';
@@ -191,6 +191,33 @@ describe('pressing outside the editor', () => {
     expect(useUiStore.getState().pendingClose).toBeNull();
   });
 
+  it('pointerdown on a grip handle leaves a clean editor open', async () => {
+    seed(mk('a', null, { title: 'Alpha' }), mk('b', 'a', { title: 'Beta' }));
+    renderApp();
+    await pressTitle('Alpha');
+    await userEvent.click(screen.getByRole('button', { name: 'Edit Alpha' }));
+    expect(screen.getByRole('form', { name: 'Edit Alpha' })).toBeInTheDocument();
+
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Move Alpha' }));
+
+    expect(screen.getByRole('form', { name: 'Edit Alpha' })).toBeInTheDocument();
+    expect(useUiStore.getState().openEditor).not.toBeNull();
+  });
+
+  it('pointerdown on a grip handle does not ask about a dirty editor', async () => {
+    seed(mk('a', null, { title: 'Alpha' }), mk('b', 'a', { title: 'Beta' }));
+    renderApp();
+    await pressTitle('Alpha');
+    await userEvent.click(screen.getByRole('button', { name: 'Edit Alpha' }));
+    await userEvent.type(screen.getByLabelText('Title'), '!');
+
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Move Alpha' }));
+
+    expect(screen.queryByRole('dialog', { name: 'Discard changes?' })).toBeNull();
+    expect(screen.getByRole('form', { name: 'Edit Alpha' })).toBeInTheDocument();
+    expect(useUiStore.getState().pendingClose).toBeNull();
+  });
+
   it('pointerdown inside an open dialog does nothing', async () => {
     seed(mk('a', null, { title: 'Alpha' }));
     renderApp();
@@ -262,5 +289,26 @@ describe('pressing a dialog backdrop', () => {
 
     expect(screen.getByRole('form', { name: 'New item under Alpha' })).toBeInTheDocument();
     expect(useUiStore.getState().openEditor).not.toBeNull();
+  });
+});
+
+describe('Add item under a collapsed item', () => {
+  it('leaves it collapsed when a dirty editor blocks the open', async () => {
+    seed(mk('a', null, { title: 'Alpha' }), mk('b', 'a', { title: 'Beta' }));
+    act(() => {
+      useTodoStore.getState().toggleCollapsed('a');
+    });
+    renderApp();
+    await userEvent.click(screen.getByRole('button', { name: 'New item' }));
+    await userEvent.type(screen.getByLabelText('Title'), 'x');
+
+    await pressTitle('Alpha');
+    expect(screen.getByRole('dialog', { name: 'Discard changes?' })).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Add item under Alpha' }));
+
+    expect(useTodoStore.getState().collapsed.a).toBe(true);
+    expect(screen.queryByRole('form', { name: 'New item under Alpha' })).toBeNull();
+    expect(screen.getByRole('dialog', { name: 'Discard changes?' })).toBeInTheDocument();
   });
 });

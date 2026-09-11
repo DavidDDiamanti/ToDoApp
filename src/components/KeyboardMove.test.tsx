@@ -4,7 +4,9 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { TodoTree } from './TodoTree';
 import { useDragStore } from '../dnd/dragStore';
 import { useTodoStore } from '../store/todoStore';
+import { useUiStore } from '../store/uiStore';
 import { mk } from '../test/fixtures';
+import { pressTitle } from '../test/press';
 
 function seed(...todos: ReturnType<typeof mk>[]) {
   const s = useTodoStore.getState();
@@ -15,6 +17,7 @@ function seed(...todos: ReturnType<typeof mk>[]) {
 beforeEach(() => {
   useTodoStore.getState().reset();
   useDragStore.setState({ draggingId: null, indicator: null, announcement: { text: '', seq: 0 }, focusId: null });
+  useUiStore.getState().reset();
 });
 
 function rootOrder() {
@@ -145,6 +148,20 @@ describe('keyboard moves', () => {
       expect(screen.getByRole('status').textContent?.trim()).toBe('Cannot move b up');
       expect(useTodoStore.getState().todos).toEqual(before);
     });
+  });
+
+  it("refuses Alt+Arrow moves while the item's editor is open", async () => {
+    seed(mk('a', null, { sort_order: 0 }), mk('b', null, { sort_order: 1 }));
+    render(<TodoTree />);
+    await pressTitle('b');
+    await userEvent.click(screen.getByRole('button', { name: 'Edit b' }));
+    expect(screen.getByRole('form', { name: 'Edit b' })).toBeInTheDocument();
+
+    screen.getByRole('button', { name: 'Move b' }).focus();
+    await userEvent.keyboard('{Alt>}{ArrowUp}{/Alt}');
+
+    expect(screen.getByRole('status').textContent?.trim()).toBe('Finish editing b before moving it');
+    expect(rootOrder()).toEqual(['a', 'b']);
   });
 
   it('gives every handle an accessible name and a description pointing at the hint', () => {

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { get } from 'idb-keyval';
 import { createTodoStore, detachStoreForSignOut, migrateTodoState, STORE_VERSION, switchStoreUser, useTodoStore } from './todoStore';
 import { createMemoryStorage } from './storage';
+import { useUiStore } from './uiStore';
 import { mk } from '../test/fixtures';
 
 function fresh() {
@@ -107,5 +108,23 @@ describe('migrateTodoState', () => {
   });
   it('STORE_VERSION is 2', () => {
     expect(STORE_VERSION).toBe(2);
+  });
+});
+
+describe('leaving a user clears the UI store', () => {
+  it('detachStoreForSignOut drops the active item and the open editor', () => {
+    useUiStore.getState().setActive('a');
+    useUiStore.getState().requestOpen({ kind: 'edit', id: 'a' });
+    detachStoreForSignOut();
+    expect(useUiStore.getState().activeItemId).toBeNull();
+    expect(useUiStore.getState().openEditor).toBeNull();
+  });
+
+  it('switchStoreUser drops the active item and the open editor', async () => {
+    useUiStore.getState().setActive('a');
+    useUiStore.getState().requestOpen({ kind: 'edit', id: 'a' });
+    await switchStoreUser('user-y');
+    expect(useUiStore.getState().activeItemId).toBeNull();
+    expect(useUiStore.getState().openEditor).toBeNull();
   });
 });
