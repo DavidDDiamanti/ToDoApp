@@ -34,6 +34,8 @@ export function TodoItem({ todo, map, depth, tree }: Props) {
   const hideCompleted = useTodoStore((s) => s.hideCompleted);
   const toggleCollapsed = useTodoStore((s) => s.toggleCollapsed);
   const wantsFocus = useDragStore((s) => s.focusId === todo.id);
+  const isDragging = useDragStore((s) => s.draggingId === todo.id);
+  const dropZone = useDragStore((s) => (s.indicator?.targetId === todo.id ? s.indicator.zone : null));
   const [showDetails, setShowDetails] = useState(false);
   const [mode, setMode] = useState<'view' | 'edit' | 'add' | 'delete'>('view');
   const handleRef = useRef<HTMLButtonElement>(null);
@@ -87,11 +89,12 @@ export function TodoItem({ todo, map, depth, tree }: Props) {
       data-overdue={overdue ? 'true' : undefined}
       data-details={showDetails ? 'true' : undefined}
       data-completed={todo.completed ? 'true' : undefined}
-      data-todo-id={todo.id}
+      data-dragging={isDragging ? 'true' : undefined}
+      data-drop={dropZone ?? undefined}
       className={styles.item}
       style={{ '--item-color': railColor } as CSSProperties}
     >
-      <div className={styles.row}>
+      <div className={styles.row} data-todo-id={todo.id}>
         <button
           type="button"
           ref={handleRef}

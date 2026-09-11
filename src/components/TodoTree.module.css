@@ -1,4 +1,5 @@
 .tree { list-style: none; margin: 0; padding: 0; }
+.tree[data-dragging='true'] { user-select: none; -webkit-user-select: none; }
 .empty { color: var(--ink-muted); padding: var(--space-6) var(--space-4); text-align: center; }
 
 .srOnly {
@@ -9,6 +10,7 @@
   margin: -1px;
   overflow: hidden;
   clip: rect(0, 0, 0, 0);
+  clip-path: inset(50%);
   white-space: nowrap;
   border: 0;
 }
