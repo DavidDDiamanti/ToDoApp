@@ -1,7 +1,26 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createAuthStore, type AuthClient } from './authStore';
+import { EXPIRED_LINK_MESSAGE, type UrlErrorSource } from '../lib/authUrlError';
 
 type Session = { user: { id: string; email?: string } } | null;
+
+function fakeUrlErrorSource(hash: string) {
+  let current = hash;
+  let clearCount = 0;
+  const source: UrlErrorSource = {
+    read: () => ({ hash: current, search: '' }),
+    clear: () => {
+      clearCount += 1;
+      current = '';
+    },
+  };
+  return {
+    source,
+    get clearCount() {
+      return clearCount;
+    },
+  };
+}
 
 function fakeClient(initial: Session = null) {
   let listener: ((event: string, session: Session) => void) | null = null;
@@ -75,5 +94,73 @@ describe('authStore', () => {
     await store.getState().init();
     await store.getState().init();
     expect(f.subscribeCount).toBe(1);
+  });
+
+  it('shows the expired-link message from the URL after init and clears the URL exactly once', async () => {
+    const { client } = fakeClient(null);
+    const urlErrors = fakeUrlErrorSource('#error=access_denied&error_code=otp_expired&error_description=Link%20expired');
+    const store = createAuthStore(client, async () => {}, urlErrors.source);
+    await store.getState().init();
+    expect(store.getState().error).toBe(EXPIRED_LINK_MESSAGE);
+    expect(urlErrors.clearCount).toBe(1);
+  });
+
+  it('keeps the expired-link message across a second init call (StrictMode)', async () => {
+    const { client } = fakeClient(null);
+    const urlErrors = fakeUrlErrorSource('#error=access_denied&error_code=otp_expired');
+    const store = createAuthStore(client, async () => {}, urlErrors.source);
+    await store.getState().init();
+    await store.getState().init();
+    expect(store.getState().error).toBe(EXPIRED_LINK_MESSAGE);
+    expect(urlErrors.clearCount).toBe(1);
+  });
+
+  it('keeps the expired-link message through a signed-out auth event', async () => {
+    const { client, emit } = fakeClient(null);
+    const urlErrors = fakeUrlErrorSource('#error=access_denied&error_code=otp_expired');
+    const store = createAuthStore(client, async () => {}, urlErrors.source);
+    await store.getState().init();
+    emit('SIGNED_OUT', null);
+    expect(store.getState().error).toBe(EXPIRED_LINK_MESSAGE);
+  });
+
+  it('drops the expired-link message on sign-in', async () => {
+    const { client, emit } = fakeClient(null);
+    const urlErrors = fakeUrlErrorSource('#error=access_denied&error_code=otp_expired');
+    const store = createAuthStore(client, async () => {}, urlErrors.source);
+    await store.getState().init();
+    emit('SIGNED_IN', { user: { id: 'u1' } });
+    expect(store.getState().error).toBeNull();
+  });
+
+  it('clearError removes the expired-link message permanently', async () => {
+    const { client, emit } = fakeClient(null);
+    const urlErrors = fakeUrlErrorSource('#error=access_denied&error_code=otp_expired');
+    const store = createAuthStore(client, async () => {}, urlErrors.source);
+    await store.getState().init();
+    store.getState().clearError();
+    expect(store.getState().error).toBeNull();
+    emit('SIGNED_OUT', null);
+    expect(store.getState().error).toBeNull();
+  });
+
+  it('sendMagicLink clears the expired-link message for good', async () => {
+    const { client, emit } = fakeClient(null);
+    const urlErrors = fakeUrlErrorSource('#error=access_denied&error_code=otp_expired');
+    const store = createAuthStore(client, async () => {}, urlErrors.source);
+    await store.getState().init();
+    await store.getState().sendMagicLink('me@example.com');
+    expect(store.getState().error).toBeNull();
+    emit('SIGNED_OUT', null);
+    expect(store.getState().error).toBeNull();
+  });
+
+  it('does not touch the URL source when there is no error in it', async () => {
+    const { client } = fakeClient(null);
+    const urlErrors = fakeUrlErrorSource('');
+    const store = createAuthStore(client, async () => {}, urlErrors.source);
+    await store.getState().init();
+    expect(store.getState().error).toBeNull();
+    expect(urlErrors.clearCount).toBe(0);
   });
 });

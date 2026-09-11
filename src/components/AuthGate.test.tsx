@@ -3,8 +3,9 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { AuthGate } from './AuthGate';
 import { createAuthStore, type AuthClient } from '../store/authStore';
+import { EXPIRED_LINK_MESSAGE, type UrlErrorSource } from '../lib/authUrlError';
 
-function fake(session: { user: { id: string } } | null) {
+function fake(session: { user: { id: string } } | null, urlErrors?: UrlErrorSource) {
   const client: AuthClient = {
     getSession: async () => ({ data: { session } }),
     onAuthStateChange: () => ({ data: { subscription: { unsubscribe() {} } } }),
@@ -12,7 +13,7 @@ function fake(session: { user: { id: string } } | null) {
     verifyOtp: vi.fn(async () => ({ error: null })),
     signOut: vi.fn(async () => ({ error: null })),
   };
-  return { client, store: createAuthStore(client, async () => {}) };
+  return { client, store: createAuthStore(client, async () => {}, urlErrors) };
 }
 
 describe('AuthGate', () => {
@@ -57,6 +58,19 @@ describe('AuthGate', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Sign in with code' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Token has expired');
     await userEvent.click(screen.getByRole('button', { name: 'Use a different email' }));
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('shows the expired-link message from the URL on the email step, then clears it after sending a new link', async () => {
+    const urlErrors: UrlErrorSource = {
+      read: () => ({ hash: '#error=access_denied&error_code=otp_expired', search: '' }),
+      clear: () => {},
+    };
+    const { store } = fake(null, urlErrors);
+    render(<AuthGate store={store}><p>App body</p></AuthGate>);
+    expect(await screen.findByRole('alert')).toHaveTextContent(EXPIRED_LINK_MESSAGE);
+    await userEvent.type(screen.getByLabelText('Email'), 'me@example.com');
+    await userEvent.click(screen.getByRole('button', { name: 'Send sign-in link' }));
     expect(screen.queryByRole('alert')).toBeNull();
   });
 });

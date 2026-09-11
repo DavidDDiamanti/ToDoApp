@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
+import { authErrorMessage, parseAuthUrlError, windowUrlErrorSource, type UrlErrorSource } from '../lib/authUrlError';
 import { setCurrentUserId } from './actions';
 import { detachStoreForSignOut, switchStoreUser } from './todoStore';
 
@@ -26,13 +27,19 @@ export interface AuthState {
   clearError(): void;
 }
 
-export function createAuthStore(client: AuthClient, onUser: (userId: string | null) => Promise<void>) {
+export function createAuthStore(
+  client: AuthClient,
+  onUser: (userId: string | null) => Promise<void>,
+  urlErrors: UrlErrorSource = windowUrlErrorSource,
+) {
   return create<AuthState>()((set, get) => {
     let lastUser: string | null = null;
     let subscription: { unsubscribe(): void } | null = null;
+    let urlError: string | null = null;
     const apply = (session: Session) => {
       const userId = session?.user.id ?? null;
-      set({ status: userId ? 'signed_in' : 'signed_out', userId, email: session?.user.email ?? null, error: null });
+      set({ status: userId ? 'signed_in' : 'signed_out', userId, email: session?.user.email ?? null, error: userId ? null : urlError });
+      if (userId) urlError = null;
       if (userId !== lastUser) {
         lastUser = userId;
         void onUser(userId);
@@ -45,6 +52,11 @@ export function createAuthStore(client: AuthClient, onUser: (userId: string | nu
       pendingEmail: null,
       error: null,
       init: async () => {
+        const parsed = parseAuthUrlError(urlErrors.read());
+        if (parsed) {
+          urlError = authErrorMessage(parsed);
+          urlErrors.clear();
+        }
         const { data } = await client.getSession();
         apply(data.session);
         if (!subscription) {
@@ -52,6 +64,7 @@ export function createAuthStore(client: AuthClient, onUser: (userId: string | nu
         }
       },
       sendMagicLink: async (email) => {
+        urlError = null;
         set({ pendingEmail: email, error: null });
         const { error } = await client.signInWithOtp({ email, options: { emailRedirectTo: window.location.origin } });
         if (error) set({ error: error.message });
@@ -68,7 +81,10 @@ export function createAuthStore(client: AuthClient, onUser: (userId: string | nu
       signOut: async () => {
         await client.signOut();
       },
-      clearError: () => set({ error: null }),
+      clearError: () => {
+        urlError = null;
+        set({ error: null });
+      },
     };
   });
 }
