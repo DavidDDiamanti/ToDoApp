@@ -30,6 +30,10 @@ function seedFlat() {
   seed(mk('a', null, { sort_order: 0 }), mk('b', null, { sort_order: 1 }), mk('c', null, { sort_order: 2 }));
 }
 
+function seedNested() {
+  seed(mk('a', null, { sort_order: 0 }), mk('b', 'a', { sort_order: 0 }), mk('c', null, { sort_order: 1 }));
+}
+
 function item(id: string) {
   return screen.getByRole('treeitem', { name: id });
 }
@@ -41,11 +45,20 @@ function rootOrder() {
     .map((t) => t.id);
 }
 
-const LISTENERS = ['pointermove', 'pointerup', 'pointercancel', 'keydown'];
+const LISTENERS = ['pointermove', 'pointerup', 'pointercancel', 'keydown', 'blur'];
 
-function counts(spy: MockInstance<(type: string, ...rest: never[]) => void>) {
+type ListenerSpy = MockInstance<(type: string, ...rest: never[]) => void>;
+
+function counts(spy: ListenerSpy) {
   const out: Record<string, number> = {};
   for (const name of LISTENERS) out[name] = spy.mock.calls.filter((c) => c[0] === name).length;
+  return out;
+}
+
+/** The handler passed for each event name, in call order, so pairs can be compared by identity. */
+function handlers(spy: ListenerSpy) {
+  const out: Record<string, unknown[]> = {};
+  for (const name of LISTENERS) out[name] = spy.mock.calls.filter((c) => c[0] === name).map((c) => c[1]);
   return out;
 }
 
@@ -108,7 +121,7 @@ describe('pointer drag and drop', () => {
   });
 
   it('targets the nested row under the pointer, not its ancestor', () => {
-    seed(mk('a', null, { sort_order: 0 }), mk('b', 'a', { sort_order: 0 }), mk('c', null, { sort_order: 1 }));
+    seedNested();
     render(<TodoTree getRect={getRect} />);
     fireEvent.pointerDown(screen.getByRole('button', { name: 'Move c' }), { button: 0, pointerId: 1, clientY: 90 });
     fireEvent.pointerMove(window, { pointerId: 1, clientY: 66 });
@@ -118,7 +131,7 @@ describe('pointer drag and drop', () => {
   });
 
   it('refuses to drop an item onto its own descendant', () => {
-    seed(mk('a', null, { sort_order: 0 }), mk('b', 'a', { sort_order: 0 }), mk('c', null, { sort_order: 1 }));
+    seedNested();
     render(<TodoTree getRect={getRect} />);
     const before = useTodoStore.getState().todos;
     fireEvent.pointerDown(screen.getByRole('button', { name: 'Move a' }), { button: 0, pointerId: 1, clientY: 10 });
@@ -126,6 +139,17 @@ describe('pointer drag and drop', () => {
 
     expect(item('b')).not.toHaveAttribute('data-drop');
     fireEvent.pointerUp(window, { pointerId: 1, clientY: 66 });
+    expect(useTodoStore.getState().todos).toEqual(before);
+  });
+
+  it('announces a refused drop and leaves the store alone', () => {
+    seedNested();
+    render(<TodoTree getRect={getRect} />);
+    const before = useTodoStore.getState().todos;
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Move a' }), { button: 0, pointerId: 1, clientY: 10 });
+    fireEvent.pointerUp(window, { pointerId: 1, clientY: 66 });
+
+    expect(screen.getByRole('status').textContent?.trim()).toBe('Cannot move a here');
     expect(useTodoStore.getState().todos).toEqual(before);
   });
 
@@ -142,17 +166,84 @@ describe('pointer drag and drop', () => {
     expect(item('b')).not.toHaveAttribute('data-drop');
   });
 
-  it('aborts on Escape and ignores the pointer up that follows', () => {
+  it('aborts on Escape, swallows the key and ignores the pointer up that follows', () => {
     seedFlat();
     render(<TodoTree getRect={getRect} />);
     const before = useTodoStore.getState().todos;
     fireEvent.pointerDown(screen.getByRole('button', { name: 'Move a' }), { button: 0, pointerId: 1, clientY: 10 });
     fireEvent.pointerMove(window, { pointerId: 1, clientY: 80 });
-    fireEvent.keyDown(window, { key: 'Escape' });
+
+    expect(fireEvent.keyDown(window, { key: 'Escape' })).toBe(false);
     fireEvent.pointerUp(window, { pointerId: 1, clientY: 80 });
 
     expect(useTodoStore.getState().todos).toEqual(before);
     expect(screen.getByRole('tree')).not.toHaveAttribute('data-dragging');
+  });
+
+  it('ends the session when a mouse move reports no buttons pressed', () => {
+    seedFlat();
+    const add = vi.spyOn(window, 'addEventListener');
+    const remove = vi.spyOn(window, 'removeEventListener');
+    render(<TodoTree getRect={getRect} />);
+    const before = useTodoStore.getState().todos;
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Move a' }), { button: 0, pointerId: 1, clientY: 10 });
+    fireEvent.pointerMove(window, { pointerId: 1, clientY: 80, pointerType: 'mouse', buttons: 0 });
+
+    expect(screen.getByRole('tree')).not.toHaveAttribute('data-dragging');
+    expect(item('b')).not.toHaveAttribute('data-drop');
+    expect(useTodoStore.getState().todos).toEqual(before);
+    expect(counts(remove)).toEqual(counts(add));
+  });
+
+  it('ends the session when the window loses focus', () => {
+    seedFlat();
+    const add = vi.spyOn(window, 'addEventListener');
+    const remove = vi.spyOn(window, 'removeEventListener');
+    render(<TodoTree getRect={getRect} />);
+    const before = useTodoStore.getState().todos;
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Move a' }), { button: 0, pointerId: 1, clientY: 10 });
+    fireEvent.pointerMove(window, { pointerId: 1, clientY: 80 });
+    fireEvent.blur(window);
+
+    expect(screen.getByRole('tree')).not.toHaveAttribute('data-dragging');
+    expect(item('b')).not.toHaveAttribute('data-drop');
+    expect(useTodoStore.getState().todos).toEqual(before);
+    expect(counts(remove)).toEqual(counts(add));
+  });
+
+  it('starts no session from a right button pointer down', () => {
+    seedFlat();
+    const add = vi.spyOn(window, 'addEventListener');
+    render(<TodoTree getRect={getRect} />);
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Move a' }), { button: 2, pointerId: 1, clientY: 10 });
+    fireEvent.pointerMove(window, { pointerId: 1, clientY: 80 });
+
+    expect(screen.getByRole('tree')).not.toHaveAttribute('data-dragging');
+    expect(item('b')).not.toHaveAttribute('data-drop');
+    expect(counts(add)).toEqual({ pointermove: 0, pointerup: 0, pointercancel: 0, keydown: 0, blur: 0 });
+  });
+
+  it('ignores moves that belong to another pointer', () => {
+    seedFlat();
+    render(<TodoTree getRect={getRect} />);
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Move a' }), { button: 0, pointerId: 1, clientY: 10 });
+    fireEvent.pointerMove(window, { pointerId: 2, clientY: 80 });
+
+    expect(item('b')).not.toHaveAttribute('data-drop');
+    expect(screen.getByRole('tree')).toHaveAttribute('data-dragging', 'true');
+  });
+
+  it('does not retarget the session when a second pointer goes down', () => {
+    seedFlat();
+    render(<TodoTree getRect={getRect} />);
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Move a' }), { button: 0, pointerId: 1, clientY: 10 });
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Move c' }), { button: 0, pointerId: 2, clientY: 90 });
+
+    expect(item('a')).toHaveAttribute('data-dragging', 'true');
+    expect(item('c')).not.toHaveAttribute('data-dragging');
+
+    fireEvent.pointerUp(window, { pointerId: 1, clientY: 80 });
+    expect(rootOrder()).toEqual(['b', 'a', 'c']);
   });
 
   it('removes every window listener it added after a drop', () => {
@@ -164,8 +255,9 @@ describe('pointer drag and drop', () => {
     fireEvent.pointerMove(window, { pointerId: 1, clientY: 80 });
     fireEvent.pointerUp(window, { pointerId: 1, clientY: 80 });
 
-    expect(counts(add)).toEqual({ pointermove: 1, pointerup: 1, pointercancel: 1, keydown: 1 });
+    expect(counts(add)).toEqual({ pointermove: 1, pointerup: 1, pointercancel: 1, keydown: 1, blur: 1 });
     expect(counts(remove)).toEqual(counts(add));
+    expect(handlers(remove)).toEqual(handlers(add));
   });
 
   it('removes every window listener when it unmounts mid-drag', () => {
@@ -177,8 +269,9 @@ describe('pointer drag and drop', () => {
     fireEvent.pointerMove(window, { pointerId: 1, clientY: 80 });
     view.unmount();
 
-    expect(counts(add)).toEqual({ pointermove: 1, pointerup: 1, pointercancel: 1, keydown: 1 });
+    expect(counts(add)).toEqual({ pointermove: 1, pointerup: 1, pointercancel: 1, keydown: 1, blur: 1 });
     expect(counts(remove)).toEqual(counts(add));
+    expect(handlers(remove)).toEqual(handlers(add));
   });
 
   it('notifies the drag store once for two moves inside the same band', () => {

@@ -1,5 +1,6 @@
 .tree { list-style: none; margin: 0; padding: 0; }
 .tree[data-dragging='true'] { user-select: none; -webkit-user-select: none; }
+.tree[data-dragging='true'], .tree[data-dragging='true'] * { cursor: grabbing; }
 .empty { color: var(--ink-muted); padding: var(--space-6) var(--space-4); text-align: center; }
 
 .srOnly {

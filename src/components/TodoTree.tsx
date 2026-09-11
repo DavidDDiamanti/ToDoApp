@@ -42,9 +42,14 @@ export function TodoTree({ getRect }: Props) {
   todosRef.current = todos;
 
   const getMap = useCallback(() => mapRef.current, []);
-  const onDrop = useCallback((id: string, target: Placement) => {
+  const onDrop = useCallback((id: string, target: Placement | null) => {
+    const refused = `Cannot move ${todosRef.current[id]?.title ?? ''} here`;
+    if (target === null) {
+      useDragStore.getState().announce(refused);
+      return;
+    }
     const description = describePlacement(todosRef.current, mapRef.current, id, target);
-    if (moveTodoTo(id, target)) useDragStore.getState().announce(description);
+    useDragStore.getState().announce(moveTodoTo(id, target) ? description : refused);
   }, []);
   const { onHandlePointerDown } = useDragReorder({ rootRef, getMap, getRect, onDrop });
   const tree = useMemo<TreeContext>(() => ({ hintId, onHandlePointerDown }), [hintId, onHandlePointerDown]);

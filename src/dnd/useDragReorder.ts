@@ -9,7 +9,8 @@ interface Options {
   rootRef: RefObject<HTMLElement | null>;
   getMap(): ChildrenMap;
   getRect?: RectReader;
-  onDrop(id: string, target: Placement): void;
+  /** `target` is null when the pointer was over a row the item cannot go to. */
+  onDrop(id: string, target: Placement | null): void;
 }
 
 interface Session {
@@ -21,6 +22,7 @@ interface Session {
   onPointerUp(e: PointerEvent): void;
   onPointerCancel(e: PointerEvent): void;
   onKeyDown(e: KeyboardEvent): void;
+  onWindowBlur(): void;
 }
 
 /**
@@ -40,6 +42,7 @@ export function useDragReorder(opts: Options): { onHandlePointerDown(id: string,
     window.removeEventListener('pointerup', session.onPointerUp);
     window.removeEventListener('pointercancel', session.onPointerCancel);
     window.removeEventListener('keydown', session.onKeyDown);
+    window.removeEventListener('blur', session.onWindowBlur);
     useDragStore.getState().end();
   }, []);
 
@@ -62,33 +65,50 @@ export function useDragReorder(opts: Options): { onHandlePointerDown(id: string,
       };
 
       const onPointerMove = (ev: PointerEvent) => {
+        if (sessionRef.current === null) return;
         if (ev.pointerId !== pointerId) return;
+        // No button left down: the mouse was released outside the window, so no pointerup is coming.
+        if (ev.pointerType === 'mouse' && ev.buttons === 0) {
+          finish();
+          return;
+        }
         const hit = targetAt(ev.clientY);
         useDragStore.getState().setIndicator(hit === null ? null : { targetId: hit.id, zone: hit.zone });
       };
       const onPointerUp = (ev: PointerEvent) => {
+        if (sessionRef.current === null) return;
         if (ev.pointerId !== pointerId) return;
-        const hit = targetAt(ev.clientY);
+        const hit = hitTest(rows, ev.clientY + window.scrollY);
         if (hit !== null) {
-          const target = dropToPlacement(optsRef.current.getMap(), id, hit.id, hit.zone);
-          if (target !== null) optsRef.current.onDrop(id, target);
+          const target = blocked.has(hit.id) ? null : dropToPlacement(optsRef.current.getMap(), id, hit.id, hit.zone);
+          optsRef.current.onDrop(id, target);
         }
         finish();
       };
       const onPointerCancel = (ev: PointerEvent) => {
+        if (sessionRef.current === null) return;
         if (ev.pointerId !== pointerId) return;
         finish();
       };
       const onKeyDown = (ev: KeyboardEvent) => {
-        if (ev.key === 'Escape') finish();
+        if (sessionRef.current === null) return;
+        if (ev.key !== 'Escape') return;
+        ev.stopPropagation();
+        ev.preventDefault();
+        finish();
+      };
+      const onWindowBlur = () => {
+        if (sessionRef.current === null) return;
+        finish();
       };
 
-      sessionRef.current = { id, pointerId, rows, blocked, onPointerMove, onPointerUp, onPointerCancel, onKeyDown };
+      sessionRef.current = { id, pointerId, rows, blocked, onPointerMove, onPointerUp, onPointerCancel, onKeyDown, onWindowBlur };
       useDragStore.getState().start(id);
       window.addEventListener('pointermove', onPointerMove);
       window.addEventListener('pointerup', onPointerUp);
       window.addEventListener('pointercancel', onPointerCancel);
       window.addEventListener('keydown', onKeyDown);
+      window.addEventListener('blur', onWindowBlur);
     },
     [finish],
   );
