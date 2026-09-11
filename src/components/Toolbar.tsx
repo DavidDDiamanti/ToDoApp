@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useEffect } from 'react';
 import { addTodo } from '../store/actions';
 import { useAuthStore } from '../store/authStore';
 import { useSyncStatus } from '../store/syncStatusStore';
 import { useTodoStore } from '../store/todoStore';
+import { useUiStore } from '../store/uiStore';
 import { PlusIcon } from './icons';
 import { TodoEditor } from './TodoEditor';
 import styles from './Toolbar.module.css';
@@ -14,7 +15,15 @@ export function Toolbar() {
   const setHideCompleted = useTodoStore((s) => s.setHideCompleted);
   const signOut = useAuthStore((s) => s.signOut);
   const sync = useSyncStatus((s) => s.state);
-  const [adding, setAdding] = useState(false);
+  const adding = useUiStore((s) => s.openEditor !== null && s.openEditor.kind === 'root');
+
+  useEffect(
+    () => () => {
+      const key = useUiStore.getState().openEditor;
+      if (key !== null && key.kind === 'root') useUiStore.getState().closeEditor();
+    },
+    [],
+  );
 
   return (
     <header className={styles.bar}>
@@ -25,7 +34,13 @@ export function Toolbar() {
           <input type="checkbox" checked={hideCompleted} onChange={(e) => setHideCompleted(e.target.checked)} aria-label="Hide completed" />
           <span>Hide completed</span>
         </label>
-        <button type="button" className={styles.primary} onClick={() => setAdding(true)}>
+        <button
+          type="button"
+          className={styles.primary}
+          data-editor-toggle
+          aria-expanded={adding}
+          onClick={() => useUiStore.getState().requestOpen({ kind: 'root' })}
+        >
           <PlusIcon />
           <span>New item</span>
         </button>
@@ -36,8 +51,8 @@ export function Toolbar() {
           initial={{ title: '', description: '', due_date: null, due_time: null, color: 'slate' }}
           heading="New item"
           submitLabel="Add item"
-          onSave={(v) => { addTodo(v, null); setAdding(false); }}
-          onCancel={() => setAdding(false)}
+          onSave={(v) => { addTodo(v, null); useUiStore.getState().closeEditor(); }}
+          onCancel={() => useUiStore.getState().requestClose()}
         />
       ) : null}
     </header>

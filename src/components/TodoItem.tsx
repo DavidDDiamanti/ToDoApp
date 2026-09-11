@@ -7,7 +7,7 @@ import { describePlacement, keyMovePlacement, type MoveKey } from '../domain/pla
 import { useDragStore } from '../dnd/dragStore';
 import { addTodo, editTodo, moveTodoTo, removeTodo, toggleTodo } from '../store/actions';
 import { useTodoStore } from '../store/todoStore';
-import { useUiStore } from '../store/uiStore';
+import { editorKindFor, useUiStore } from '../store/uiStore';
 import type { Todo } from '../types';
 import { ChevronIcon, GripIcon, PencilIcon, PlusIcon, TrashIcon } from './icons';
 import { visibleChildren, type TreeContext } from './TodoTree';
@@ -38,8 +38,8 @@ export function TodoItem({ todo, map, depth, tree }: Props) {
   const isDragging = useDragStore((s) => s.draggingId === todo.id);
   const dropZone = useDragStore((s) => (s.indicator?.targetId === todo.id ? s.indicator.zone : null));
   const isActive = useUiStore((s) => s.activeItemId === todo.id);
+  const editorKind = useUiStore((s) => editorKindFor(s.openEditor, todo.id));
   const [showDetails, setShowDetails] = useState(false);
-  const [editorMode, setEditorMode] = useState<'edit' | 'add' | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const handleRef = useRef<HTMLButtonElement>(null);
 
@@ -64,6 +64,13 @@ export function TodoItem({ todo, map, depth, tree }: Props) {
   useEffect(
     () => () => {
       if (useUiStore.getState().activeItemId === todo.id) useUiStore.getState().setActive(null);
+    },
+    [todo.id],
+  );
+
+  useEffect(
+    () => () => {
+      if (editorKindFor(useUiStore.getState().openEditor, todo.id) !== null) useUiStore.getState().closeEditor();
     },
     [todo.id],
   );
@@ -162,12 +169,26 @@ export function TodoItem({ todo, map, depth, tree }: Props) {
 
         {isActive ? (
           <div className={styles.actions}>
-            <button type="button" className={styles.iconButton} aria-label={`Edit ${todo.title}`} onClick={() => setEditorMode('edit')}><PencilIcon /></button>
+            <button
+              type="button"
+              className={styles.iconButton}
+              aria-label={`Edit ${todo.title}`}
+              data-editor-toggle
+              aria-expanded={editorKind === 'edit'}
+              onClick={() => useUiStore.getState().requestOpen({ kind: 'edit', id: todo.id })}
+            >
+              <PencilIcon />
+            </button>
             <button
               type="button"
               className={styles.iconButton}
               aria-label={`Add item under ${todo.title}`}
-              onClick={() => { setEditorMode('add'); if (collapsed) toggleCollapsed(todo.id); }}
+              data-editor-toggle
+              aria-expanded={editorKind === 'add'}
+              onClick={() => {
+                useUiStore.getState().requestOpen({ kind: 'add', id: todo.id });
+                if (collapsed) toggleCollapsed(todo.id);
+              }}
             >
               <PlusIcon />
             </button>
@@ -183,22 +204,22 @@ export function TodoItem({ todo, map, depth, tree }: Props) {
         ) : null}
       </div>
 
-      {editorMode === 'edit' ? (
+      {editorKind === 'edit' ? (
         <TodoEditor
           initial={{ title: todo.title, description: todo.description, due_date: todo.due_date, due_time: todo.due_time, color: todo.color }}
           heading={`Edit ${todo.title}`}
           submitLabel="Save changes"
-          onSave={(v) => { editTodo(todo.id, v); setEditorMode(null); }}
-          onCancel={() => setEditorMode(null)}
+          onSave={(v) => { editTodo(todo.id, v); useUiStore.getState().closeEditor(); }}
+          onCancel={() => useUiStore.getState().requestClose()}
         />
       ) : null}
-      {editorMode === 'add' ? (
+      {editorKind === 'add' ? (
         <TodoEditor
           initial={{ title: '', description: '', due_date: null, due_time: null, color: todo.color }}
           heading={`New item under ${todo.title}`}
           submitLabel="Add item"
-          onSave={(v) => { addTodo(v, todo.id); setEditorMode(null); }}
-          onCancel={() => setEditorMode(null)}
+          onSave={(v) => { addTodo(v, todo.id); useUiStore.getState().closeEditor(); }}
+          onCancel={() => useUiStore.getState().requestClose()}
         />
       ) : null}
       {confirmingDelete ? (
