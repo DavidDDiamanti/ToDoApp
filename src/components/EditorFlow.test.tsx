@@ -196,3 +196,24 @@ describe('pressing outside the editor', () => {
     expect(useUiStore.getState().pendingClose).not.toBeNull();
   });
 });
+
+describe('Delete while a prompt is up', () => {
+  it('does not open a delete dialog on top of the discard prompt', async () => {
+    seed(mk('a', null, { title: 'Alpha' }), mk('b', null, { title: 'Beta' }));
+    render(<><Toolbar /><TodoTree /></>);
+    await pressTitle('Alpha');
+    await userEvent.click(screen.getByRole('button', { name: 'Edit Alpha' }));
+    await userEvent.type(screen.getByLabelText('Title'), '!');
+
+    await pressTitle('Beta');
+    expect(screen.getByRole('dialog', { name: 'Discard changes?' })).toBeInTheDocument();
+
+    const del = screen.getByRole('button', { name: 'Delete Beta' });
+    fireEvent.pointerDown(del);
+    fireEvent.click(del);
+
+    expect(screen.getAllByRole('dialog')).toHaveLength(1);
+    expect(screen.getByRole('dialog', { name: /discard changes/i })).toBeInTheDocument();
+    expect(screen.queryByRole('dialog', { name: /delete/i })).toBeNull();
+  });
+});

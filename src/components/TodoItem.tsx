@@ -194,7 +194,11 @@ export function TodoItem({ todo, map, depth, tree }: Props) {
               type="button"
               className={styles.iconButton}
               aria-label={`Delete ${todo.title}`}
-              onClick={() => setConfirmingDelete(true)}
+              onClick={() => {
+                // A discard prompt is already up; do not stack a delete dialog on top of it.
+                if (useUiStore.getState().pendingClose !== null) return;
+                setConfirmingDelete(true);
+              }}
             >
               <TrashIcon />
             </button>

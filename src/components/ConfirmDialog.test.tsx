@@ -1,3 +1,4 @@
+import { StrictMode } from 'react';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
@@ -186,5 +187,68 @@ describe('ConfirmDialog focus and dismissal', () => {
     expect(first).toHaveFocus();
     await userEvent.tab({ shift: true });
     expect(last).toHaveFocus();
+  });
+});
+
+describe('ConfirmDialog focus restore guards', () => {
+  it('does not steal focus back during a simulated StrictMode remount', () => {
+    const opener = document.createElement('button');
+    opener.textContent = 'Open';
+    document.body.appendChild(opener);
+    opener.focus();
+
+    render(
+      <StrictMode>
+        <ConfirmDialog
+          heading="Delete 'Alpha'?"
+          body="It will be removed from your list."
+          primary={{ label: 'Delete', tone: 'danger', onClick: vi.fn() }}
+          secondary={{ label: 'Cancel', onClick: vi.fn() }}
+        />
+      </StrictMode>,
+    );
+
+    expect(screen.getByRole('button', { name: 'Delete' })).toHaveFocus();
+    opener.remove();
+  });
+
+  it('leaves focus alone when the secondary handler moved it elsewhere', () => {
+    const elsewhere = document.createElement('input');
+    document.body.appendChild(elsewhere);
+    const opener = document.createElement('button');
+    opener.textContent = 'Open';
+    document.body.appendChild(opener);
+    opener.focus();
+
+    const { unmount } = render(
+      <ConfirmDialog
+        heading="Discard changes?"
+        body="Your unsaved edits will be lost."
+        primary={{ label: 'Discard', tone: 'danger', onClick: vi.fn() }}
+        secondary={{ label: 'Keep editing', onClick: () => elsewhere.focus() }}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Keep editing' }));
+    expect(elsewhere).toHaveFocus();
+
+    unmount();
+    expect(elsewhere).toHaveFocus();
+    elsewhere.remove();
+    opener.remove();
+  });
+
+  it('an Escape after unmount does not reach the secondary handler', () => {
+    const secondary = { label: 'Cancel', onClick: vi.fn() };
+    const { unmount } = render(
+      <ConfirmDialog
+        heading="Delete 'Alpha'?"
+        body="It will be removed from your list."
+        primary={{ label: 'Delete', tone: 'danger', onClick: vi.fn() }}
+        secondary={secondary}
+      />,
+    );
+    unmount();
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(secondary.onClick).not.toHaveBeenCalled();
   });
 });

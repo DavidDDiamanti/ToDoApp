@@ -253,4 +253,12 @@ describe('discarding editor changes', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(useUiStore.getState().openEditor).toBeNull();
   });
+
+  it('Keep editing via the Cancel button returns focus to the title', async () => {
+    renderEditor();
+    await userEvent.type(screen.getByLabelText('Title'), ' shake');
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Keep editing' }));
+    expect(screen.getByLabelText('Title')).toHaveFocus();
+  });
 });

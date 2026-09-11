@@ -34,7 +34,14 @@ export function ConfirmDialog({ heading, body, primary, extra, secondary }: Conf
 
   useEffect(() => {
     const opener = openerRef.current;
+    const panel = panelRef.current;
     return () => {
+      // StrictMode simulates an unmount without touching the DOM, so a still-connected panel means we are staying.
+      if (panel !== null && panel.isConnected) return;
+      const active = document.activeElement;
+      // Someone moved focus on purpose (Keep editing refocusing the title): leave it where they put it.
+      const ours = active === null || active === document.body || (panel !== null && panel.contains(active));
+      if (!ours) return;
       if (opener instanceof HTMLElement && opener.isConnected) opener.focus();
     };
   }, []);
