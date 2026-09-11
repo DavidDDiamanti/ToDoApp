@@ -137,6 +137,7 @@ describe('placeTodo', () => {
     }
     expect(find(patches, 'r')).toEqual({ id: 'r', parent_id: 'g', sort_order: 1, updated_at: NOW });
     expect(find(patches, 'q')).toEqual({ id: 'q', sort_order: 2, updated_at: NOW });
+    expect(patches).toHaveLength(2);
   });
 
   it('clamps an out-of-range index to the end of the bucket', () => {
@@ -189,6 +190,13 @@ describe('dropToPlacement', () => {
     const map = buildChildrenMap(Object.values(all));
     expect(dropToPlacement(map, 'x', 'o', 'after')).toEqual({ parentId: null, index: 1 });
   });
+
+  it('returns null when the target id is not in the map', () => {
+    const all = byId(mk('a', null));
+    const map = buildChildrenMap(Object.values(all));
+    expect(dropToPlacement(map, 'a', 'zzz', 'before')).toBeNull();
+    expect(dropToPlacement(map, 'a', 'zzz', 'after')).toBeNull();
+  });
 });
 
 describe('keyMovePlacement', () => {
@@ -197,6 +205,7 @@ describe('keyMovePlacement', () => {
     mk('b', null, { sort_order: 1 }),
     mk('c', null, { sort_order: 2 }),
     mk('c1', 'c', { sort_order: 0 }),
+    mk('a1', 'a', { sort_order: 0 }),
   );
   const map = buildChildrenMap(Object.values(all));
 
@@ -213,7 +222,7 @@ describe('keyMovePlacement', () => {
     expect(keyMovePlacement(map, 'c', 'down')).toBeNull();
   });
   it('right nests under the previous sibling as its last child', () => {
-    expect(keyMovePlacement(map, 'b', 'right')).toEqual({ parentId: 'a', index: 0 });
+    expect(keyMovePlacement(map, 'b', 'right')).toEqual({ parentId: 'a', index: 1 });
   });
   it('right is null when the item is already first', () => {
     expect(keyMovePlacement(map, 'a', 'right')).toBeNull();

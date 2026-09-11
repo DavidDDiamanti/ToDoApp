@@ -71,6 +71,7 @@ export function dropToPlacement(map: ChildrenMap, draggedId: string, targetId: s
   const parentId = parentKeyOf(map, targetId) ?? null;
   const siblings = (map.get(parentId) ?? []).filter((t) => t.id !== draggedId);
   const targetIndex = siblings.findIndex((t) => t.id === targetId);
+  if (targetIndex === -1) return null;
   const index = zone === 'after' ? targetIndex + 1 : targetIndex;
   return { parentId, index };
 }
