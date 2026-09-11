@@ -3,7 +3,9 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TodoTree } from './TodoTree';
 import { useTodoStore } from '../store/todoStore';
+import { useUiStore } from '../store/uiStore';
 import { mk } from '../test/fixtures';
+import { pressTitle } from '../test/press';
 
 function seed(...todos: ReturnType<typeof mk>[]) {
   const s = useTodoStore.getState();
@@ -13,6 +15,7 @@ function seed(...todos: ReturnType<typeof mk>[]) {
 
 beforeEach(() => {
   useTodoStore.getState().reset();
+  useUiStore.getState().reset();
 });
 
 describe('TodoTree', () => {
@@ -114,13 +117,43 @@ describe('TodoTree', () => {
     expect(screen.getByText('Bring the list')).toBeInTheDocument();
   });
 
-  it('marks the item while its details are shown so narrow screens can reveal the actions', async () => {
+  it('pressing a title reveals its actions and sets data-active', async () => {
     seed(mk('a', null, { title: 'Alpha' }));
     render(<TodoTree />);
     const item = screen.getByRole('treeitem', { name: 'Alpha' });
-    expect(item).not.toHaveAttribute('data-details');
-    await userEvent.click(screen.getByRole('button', { name: /show details for alpha/i }));
-    expect(item).toHaveAttribute('data-details', 'true');
+    expect(item).not.toHaveAttribute('data-active');
+    expect(screen.queryByRole('button', { name: 'Edit Alpha' })).toBeNull();
+    await pressTitle('Alpha');
+    expect(item).toHaveAttribute('data-active', 'true');
     expect(item).not.toHaveAttribute('aria-selected');
+    expect(screen.getByRole('button', { name: 'Edit Alpha' })).toBeInTheDocument();
+  });
+
+  it('only one item shows actions at a time', async () => {
+    seed(mk('a', null, { title: 'Alpha' }), mk('b', null, { title: 'Beta' }));
+    render(<TodoTree />);
+    await pressTitle('Alpha');
+    await pressTitle('Beta');
+    expect(screen.getByRole('button', { name: 'Edit Beta' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Edit Alpha' })).toBeNull();
+    expect(screen.getByRole('button', { name: /details for alpha/i })).toHaveAttribute('aria-expanded', 'true');
+  });
+
+  it('pressing the active title again hides details but keeps the actions', async () => {
+    seed(mk('a', null, { title: 'Alpha' }));
+    render(<TodoTree />);
+    await pressTitle('Alpha');
+    await pressTitle('Alpha');
+    expect(screen.getByRole('button', { name: /show details for alpha/i })).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.getByRole('button', { name: 'Edit Alpha' })).toBeInTheDocument();
+  });
+
+  it('collapsing the parent of the active item clears activeItemId', async () => {
+    seed(mk('shop', null, { title: 'Shopping' }), mk('shoes', 'shop', { title: 'Shoe store' }));
+    render(<TodoTree />);
+    await pressTitle('Shoe store');
+    expect(useUiStore.getState().activeItemId).toBe('shoes');
+    await userEvent.click(screen.getByRole('button', { name: /collapse shopping/i }));
+    expect(useUiStore.getState().activeItemId).toBeNull();
   });
 });

@@ -7,6 +7,7 @@ import { describePlacement, keyMovePlacement, type MoveKey } from '../domain/pla
 import { useDragStore } from '../dnd/dragStore';
 import { addTodo, editTodo, moveTodoTo, removeTodo, toggleTodo } from '../store/actions';
 import { useTodoStore } from '../store/todoStore';
+import { useUiStore } from '../store/uiStore';
 import type { Todo } from '../types';
 import { ChevronIcon, GripIcon, PencilIcon, PlusIcon, TrashIcon } from './icons';
 import { visibleChildren, type TreeContext } from './TodoTree';
@@ -36,6 +37,7 @@ export function TodoItem({ todo, map, depth, tree }: Props) {
   const wantsFocus = useDragStore((s) => s.focusId === todo.id);
   const isDragging = useDragStore((s) => s.draggingId === todo.id);
   const dropZone = useDragStore((s) => (s.indicator?.targetId === todo.id ? s.indicator.zone : null));
+  const isActive = useUiStore((s) => s.activeItemId === todo.id);
   const [showDetails, setShowDetails] = useState(false);
   const [mode, setMode] = useState<'view' | 'edit' | 'add' | 'delete'>('view');
   const handleRef = useRef<HTMLButtonElement>(null);
@@ -54,6 +56,13 @@ export function TodoItem({ todo, map, depth, tree }: Props) {
   useEffect(
     () => () => {
       if (useDragStore.getState().focusId === todo.id) useDragStore.getState().requestFocus(null);
+    },
+    [todo.id],
+  );
+
+  useEffect(
+    () => () => {
+      if (useUiStore.getState().activeItemId === todo.id) useUiStore.getState().setActive(null);
     },
     [todo.id],
   );
@@ -89,7 +98,7 @@ export function TodoItem({ todo, map, depth, tree }: Props) {
       aria-label={todo.title}
       aria-expanded={hasChildren ? !collapsed : undefined}
       data-overdue={overdue ? 'true' : undefined}
-      data-details={showDetails ? 'true' : undefined}
+      data-active={isActive ? 'true' : undefined}
       data-completed={todo.completed ? 'true' : undefined}
       data-dragging={isDragging ? 'true' : undefined}
       data-drop={dropZone ?? undefined}
@@ -134,7 +143,10 @@ export function TodoItem({ todo, map, depth, tree }: Props) {
           className={styles.titleButton}
           aria-label={`${showDetails ? 'Hide' : 'Show'} details for ${todo.title}`}
           aria-expanded={showDetails}
-          onClick={() => setShowDetails((v) => !v)}
+          onClick={() => {
+            setShowDetails((v) => !v);
+            useUiStore.getState().setActive(todo.id);
+          }}
         >
           <span className={styles.title}>{todo.title}</span>
           {todo.due_date !== null ? (
@@ -147,25 +159,27 @@ export function TodoItem({ todo, map, depth, tree }: Props) {
           ) : null}
         </button>
 
-        <div className={styles.actions}>
-          <button type="button" className={styles.iconButton} aria-label={`Edit ${todo.title}`} onClick={() => setMode('edit')}><PencilIcon /></button>
-          <button
-            type="button"
-            className={styles.iconButton}
-            aria-label={`Add item under ${todo.title}`}
-            onClick={() => { setMode('add'); if (collapsed) toggleCollapsed(todo.id); }}
-          >
-            <PlusIcon />
-          </button>
-          <button
-            type="button"
-            className={styles.iconButton}
-            aria-label={`Delete ${todo.title}`}
-            onClick={() => (hasChildren ? setMode('delete') : removeTodo(todo.id, 'subtree'))}
-          >
-            <TrashIcon />
-          </button>
-        </div>
+        {isActive ? (
+          <div className={styles.actions}>
+            <button type="button" className={styles.iconButton} aria-label={`Edit ${todo.title}`} onClick={() => setMode('edit')}><PencilIcon /></button>
+            <button
+              type="button"
+              className={styles.iconButton}
+              aria-label={`Add item under ${todo.title}`}
+              onClick={() => { setMode('add'); if (collapsed) toggleCollapsed(todo.id); }}
+            >
+              <PlusIcon />
+            </button>
+            <button
+              type="button"
+              className={styles.iconButton}
+              aria-label={`Delete ${todo.title}`}
+              onClick={() => (hasChildren ? setMode('delete') : removeTodo(todo.id, 'subtree'))}
+            >
+              <TrashIcon />
+            </button>
+          </div>
+        ) : null}
       </div>
 
       {mode === 'edit' ? (

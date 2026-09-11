@@ -4,12 +4,15 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { TodoEditor } from './TodoEditor';
 import { TodoTree } from './TodoTree';
 import { useTodoStore } from '../store/todoStore';
+import { useUiStore } from '../store/uiStore';
 import { mk } from '../test/fixtures';
+import { pressTitle } from '../test/press';
 
 const initial = { title: 'Milk', description: '', due_date: null, due_time: null, color: 'slate' as const };
 
 beforeEach(() => {
   useTodoStore.getState().reset();
+  useUiStore.getState().reset();
 });
 
 describe('TodoEditor', () => {
@@ -118,6 +121,7 @@ describe('editing from the tree', () => {
   it('edit button opens the editor and saving patches the store', async () => {
     useTodoStore.getState().upsertTodo(mk('a', null, { title: 'Alpha' }), false);
     render(<TodoTree />);
+    await pressTitle('Alpha');
     await userEvent.click(screen.getByRole('button', { name: 'Edit Alpha' }));
     const title = screen.getByLabelText('Title');
     await userEvent.clear(title);
@@ -129,6 +133,7 @@ describe('editing from the tree', () => {
   it('add-under button creates a child of that item', async () => {
     useTodoStore.getState().upsertTodo(mk('a', null, { title: 'Alpha' }), false);
     render(<TodoTree />);
+    await pressTitle('Alpha');
     await userEvent.click(screen.getByRole('button', { name: 'Add item under Alpha' }));
     await userEvent.type(screen.getByLabelText('Title'), 'Child{Enter}');
     const child = Object.values(useTodoStore.getState().todos).find((t) => t.title === 'Child');

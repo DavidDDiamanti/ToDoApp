@@ -3,7 +3,9 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { TodoTree } from './TodoTree';
 import { useTodoStore } from '../store/todoStore';
+import { useUiStore } from '../store/uiStore';
 import { mk } from '../test/fixtures';
+import { pressTitle } from '../test/press';
 
 function seed(...todos: ReturnType<typeof mk>[]) {
   const s = useTodoStore.getState();
@@ -13,12 +15,14 @@ function seed(...todos: ReturnType<typeof mk>[]) {
 
 beforeEach(() => {
   useTodoStore.getState().reset();
+  useUiStore.getState().reset();
 });
 
 describe('deleting', () => {
   it('deletes a leaf immediately without a dialog', async () => {
     seed(mk('a', null, { title: 'Alpha' }));
     render(<TodoTree />);
+    await pressTitle('Alpha');
     await userEvent.click(screen.getByRole('button', { name: 'Delete Alpha' }));
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(useTodoStore.getState().todos.a.deleted_at).not.toBeNull();
@@ -27,6 +31,7 @@ describe('deleting', () => {
   it('asks what to do with children and can delete them too', async () => {
     seed(mk('a', null, { title: 'Alpha' }), mk('b', 'a', { title: 'Beta' }));
     render(<TodoTree />);
+    await pressTitle('Alpha');
     await userEvent.click(screen.getByRole('button', { name: 'Delete Alpha' }));
     const dialog = screen.getByRole('dialog', { name: /delete alpha/i });
     expect(dialog).toBeInTheDocument();
@@ -37,6 +42,7 @@ describe('deleting', () => {
   it('can keep the children and move them up', async () => {
     seed(mk('a', null, { title: 'Alpha' }), mk('b', 'a', { title: 'Beta' }));
     render(<TodoTree />);
+    await pressTitle('Alpha');
     await userEvent.click(screen.getByRole('button', { name: 'Delete Alpha' }));
     await userEvent.click(screen.getByRole('button', { name: 'Keep children, move them up' }));
     expect(useTodoStore.getState().todos.b.deleted_at).toBeNull();
@@ -47,6 +53,7 @@ describe('deleting', () => {
   it('cancel leaves everything untouched', async () => {
     seed(mk('a', null, { title: 'Alpha' }), mk('b', 'a', { title: 'Beta' }));
     render(<TodoTree />);
+    await pressTitle('Alpha');
     await userEvent.click(screen.getByRole('button', { name: 'Delete Alpha' }));
     await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     expect(screen.queryByRole('dialog')).toBeNull();
@@ -64,6 +71,7 @@ describe('delete dialog keyboard', () => {
   it('Escape cancels the dialog', async () => {
     seed(mk('a', null, { title: 'Alpha' }), mk('b', 'a', { title: 'Beta' }));
     render(<TodoTree />);
+    await pressTitle('Alpha');
     await userEvent.click(screen.getByRole('button', { name: 'Delete Alpha' }));
     expect(screen.getByRole('dialog')).toBeInTheDocument();
     await userEvent.keyboard('{Escape}');
@@ -74,6 +82,7 @@ describe('delete dialog keyboard', () => {
   it('Tab cycles focus inside the dialog', async () => {
     seed(mk('a', null, { title: 'Alpha' }), mk('b', 'a', { title: 'Beta' }));
     render(<TodoTree />);
+    await pressTitle('Alpha');
     await userEvent.click(screen.getByRole('button', { name: 'Delete Alpha' }));
     const first = screen.getByRole('button', { name: 'Delete children too' });
     const last = screen.getByRole('button', { name: 'Cancel' });

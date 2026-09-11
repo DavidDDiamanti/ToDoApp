@@ -111,12 +111,6 @@
 .children { list-style: none; margin: 0; padding: 0 0 0 var(--indent); }
 
 @media (max-width: 480px) {
-  .actions { display: none; }
-  .item[data-details='true'] > .row { flex-wrap: wrap; }
-  .item[data-details='true'] > .row .actions {
-    display: flex;
-    flex-basis: 100%;
-    justify-content: flex-end;
-    padding-left: var(--touch);
-  }
+  .item[data-active='true'] > .row { flex-wrap: wrap; }
+  .actions { flex-basis: 100%; justify-content: flex-end; padding-left: var(--touch); }
 }
