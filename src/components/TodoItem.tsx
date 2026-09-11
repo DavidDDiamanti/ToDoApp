@@ -131,8 +131,11 @@ export function TodoItem({ todo, map, depth, tree }: Props) {
             onKeyDown={onHandleKeyDown}
             onPointerDown={(e) => {
               // The row cannot move while its own editor is open: the editor would be torn
-              // out of the tree mid-gesture. Press ignored; the keyboard path announces why.
-              if (editorKind !== null) return;
+              // out of the tree mid-gesture. Press ignored, and the reason is announced.
+              if (editorKind !== null) {
+                useDragStore.getState().announce(`Finish editing ${todo.title} before moving it`);
+                return;
+              }
               tree.onHandlePointerDown(todo.id, e);
             }}
           >

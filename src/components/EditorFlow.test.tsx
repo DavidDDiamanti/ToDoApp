@@ -204,6 +204,20 @@ describe('pressing outside the editor', () => {
     expect(useUiStore.getState().openEditor).not.toBeNull();
   });
 
+  it('pointerdown on the grip of another row also leaves a dirty editor alone', async () => {
+    seed(mk('a', null, { title: 'Alpha' }), mk('b', null, { title: 'Beta' }));
+    renderApp();
+    await pressTitle('Alpha');
+    await userEvent.click(screen.getByRole('button', { name: 'Edit Alpha' }));
+    await userEvent.type(screen.getByLabelText('Title'), '!');
+
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Move Beta' }));
+
+    expect(screen.queryByRole('dialog', { name: 'Discard changes?' })).toBeNull();
+    expect(screen.getByRole('form', { name: 'Edit Alpha' })).toBeInTheDocument();
+    expect(useUiStore.getState().pendingClose).toBeNull();
+  });
+
   it('pointerdown on a grip handle does not ask about a dirty editor', async () => {
     seed(mk('a', null, { title: 'Alpha' }), mk('b', 'a', { title: 'Beta' }));
     renderApp();
