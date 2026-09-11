@@ -1,7 +1,8 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { TodoTree } from './TodoTree';
+import { useDragStore } from '../dnd/dragStore';
 import { useTodoStore } from '../store/todoStore';
 import { mk } from '../test/fixtures';
 
@@ -13,6 +14,7 @@ function seed(...todos: ReturnType<typeof mk>[]) {
 
 beforeEach(() => {
   useTodoStore.getState().reset();
+  useDragStore.setState({ draggingId: null, indicator: null, announcement: { text: '', seq: 0 }, focusId: null });
 });
 
 function rootOrder() {
@@ -59,7 +61,7 @@ describe('keyboard moves', () => {
     const before = useTodoStore.getState().todos;
     screen.getByRole('button', { name: 'Move a' }).focus();
     await userEvent.keyboard('{Alt>}{ArrowUp}{/Alt}');
-    expect(screen.getByRole('status').textContent).toBe('Cannot move a up');
+    expect(screen.getByRole('status').textContent?.trim()).toBe('Cannot move a up');
     expect(useTodoStore.getState().todos).toEqual(before);
   });
 
@@ -68,7 +70,7 @@ describe('keyboard moves', () => {
     render(<TodoTree />);
     screen.getByRole('button', { name: 'Move b' }).focus();
     await userEvent.keyboard('{Alt>}{ArrowRight}{/Alt}');
-    expect(screen.getByRole('status').textContent).toBe('Moved b under a, position 1 of 1');
+    expect(screen.getByRole('status').textContent?.trim()).toBe('Moved b under a, position 1 of 1');
   });
 
   it('ignores arrow keys pressed without Alt', async () => {
@@ -78,6 +80,44 @@ describe('keyboard moves', () => {
     screen.getByRole('button', { name: 'Move a' }).focus();
     await userEvent.keyboard('{ArrowDown}');
     expect(useTodoStore.getState().todos).toEqual(before);
+  });
+
+  it('Alt+ArrowRight into a collapsed sibling expands it and keeps focus', async () => {
+    seed(mk('a', null, { sort_order: 0 }), mk('b', null, { sort_order: 1 }));
+    act(() => {
+      useTodoStore.getState().toggleCollapsed('a');
+    });
+    render(<TodoTree />);
+    screen.getByRole('button', { name: 'Move b' }).focus();
+    await userEvent.keyboard('{Alt>}{ArrowRight}{/Alt}');
+    expect(useTodoStore.getState().todos.b.parent_id).toBe('a');
+    expect(useTodoStore.getState().collapsed.a).toBeFalsy();
+    expect(screen.getByRole('button', { name: 'Move b' })).toHaveFocus();
+  });
+
+  it('focusId is cleared when the focused row unmounts', () => {
+    seed(mk('a', null, { sort_order: 0 }), mk('b', 'a', { sort_order: 0 }));
+    render(<TodoTree />);
+    act(() => {
+      useDragStore.getState().requestFocus('b');
+      useTodoStore.getState().toggleCollapsed('a');
+    });
+    expect(screen.queryByRole('button', { name: 'Move b' })).toBeNull();
+    expect(useDragStore.getState().focusId).toBeNull();
+  });
+
+  it('keeps one live region node and changes its text for repeated announcements', async () => {
+    seed(mk('a', null, { sort_order: 0 }), mk('b', null, { sort_order: 1 }));
+    render(<TodoTree />);
+    const status = screen.getByRole('status');
+    screen.getByRole('button', { name: 'Move a' }).focus();
+    await userEvent.keyboard('{Alt>}{ArrowUp}{/Alt}');
+    expect(status.textContent?.trim()).toBe('Cannot move a up');
+    const firstText = status.textContent;
+    await userEvent.keyboard('{Alt>}{ArrowUp}{/Alt}');
+    expect(screen.getByRole('status')).toBe(status);
+    expect(status.textContent?.trim()).toBe('Cannot move a up');
+    expect(status.textContent).not.toBe(firstText);
   });
 
   it('gives every handle an accessible name and a description pointing at the hint', () => {

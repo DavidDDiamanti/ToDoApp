@@ -42,7 +42,11 @@ export function removeTodo(id: string, mode: 'subtree' | 'promote'): void {
   s.applyPatches(mode === 'subtree' ? deleteSubtree(map, id, now) : deleteAndPromote(s.todos, map, id, now));
 }
 
-export function moveTodoTo(id: string, target: Placement): void {
+/** Returns true when the placement produced patches (i.e. the item actually moved). */
+export function moveTodoTo(id: string, target: Placement): boolean {
   const { s, map } = snapshot();
-  s.applyPatches(placeTodo(s.todos, map, id, target, nowISO()));
+  const patches = placeTodo(s.todos, map, id, target, nowISO());
+  if (patches.length === 0) return false;
+  s.applyPatches(patches);
+  return true;
 }

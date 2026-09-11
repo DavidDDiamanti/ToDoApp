@@ -49,6 +49,13 @@ export function TodoItem({ todo, map, depth, tree }: Props) {
     useDragStore.getState().requestFocus(null);
   }, [wantsFocus]);
 
+  useEffect(
+    () => () => {
+      if (useDragStore.getState().focusId === todo.id) useDragStore.getState().requestFocus(null);
+    },
+    [todo.id],
+  );
+
   const onHandleKeyDown = (e: ReactKeyboardEvent<HTMLButtonElement>) => {
     if (!e.altKey) return;
     const key = moveKeyFromArrow(e.key);
@@ -61,8 +68,14 @@ export function TodoItem({ todo, map, depth, tree }: Props) {
       dragStore.announce(`Cannot move ${todo.title} ${key}`);
       return;
     }
-    dragStore.announce(describePlacement(useTodoStore.getState().todos, currentMap, todo.id, target));
-    moveTodoTo(todo.id, target);
+    const description = describePlacement(useTodoStore.getState().todos, currentMap, todo.id, target);
+    const { collapsed: collapsedMap, toggleCollapsed: toggle } = useTodoStore.getState();
+    if (target.parentId !== null && collapsedMap[target.parentId] === true) toggle(target.parentId);
+    if (!moveTodoTo(todo.id, target)) {
+      dragStore.announce(`Cannot move ${todo.title} ${key}`);
+      return;
+    }
+    dragStore.announce(description);
     dragStore.requestFocus(todo.id);
   };
 

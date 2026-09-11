@@ -197,6 +197,12 @@ describe('dropToPlacement', () => {
     expect(dropToPlacement(map, 'a', 'zzz', 'before')).toBeNull();
     expect(dropToPlacement(map, 'a', 'zzz', 'after')).toBeNull();
   });
+
+  it('returns null for an inside drop on an unknown target', () => {
+    const all = byId(mk('a', null));
+    const map = buildChildrenMap(Object.values(all));
+    expect(dropToPlacement(map, 'a', 'zzz', 'inside')).toBeNull();
+  });
 });
 
 describe('keyMovePlacement', () => {

@@ -33,7 +33,9 @@ export function TodoTree() {
   return (
     <>
       <p id={hintId} className={styles.srOnly}>Press Alt with an arrow key to move this item</p>
-      <div role="status" aria-live="polite" className={styles.srOnly} key={announcement.seq}>{announcement.text}</div>
+      <div role="status" aria-live="polite" className={styles.srOnly}>
+        {announcement.seq % 2 === 0 ? announcement.text : `${announcement.text} `}
+      </div>
       {roots.length === 0 ? (
         <p className={styles.empty}>Nothing to do yet. Add your first item.</p>
       ) : (

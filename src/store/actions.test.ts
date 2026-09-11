@@ -52,4 +52,11 @@ describe('actions', () => {
     moveTodoTo(a, { parentId: a, index: 0 });
     expect(useTodoStore.getState().todos[a]).toEqual(before);
   });
+
+  it('moveTodoTo reports whether it moved anything', () => {
+    const a = addTodo({ title: 'A' }, null);
+    const b = addTodo({ title: 'B' }, null);
+    expect(moveTodoTo(a, { parentId: a, index: 0 })).toBe(false);
+    expect(moveTodoTo(b, { parentId: a, index: 0 })).toBe(true);
+  });
 });

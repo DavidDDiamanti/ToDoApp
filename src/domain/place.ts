@@ -62,6 +62,7 @@ export function placeTodo(byId: Record<string, Todo>, map: ChildrenMap, id: stri
 
 export function dropToPlacement(map: ChildrenMap, draggedId: string, targetId: string, zone: DropZone): Placement | null {
   if (targetId === draggedId || isDescendant(map, targetId, draggedId)) return null;
+  if (parentKeyOf(map, targetId) === undefined) return null;
 
   if (zone === 'inside') {
     const bucket = (map.get(targetId) ?? []).filter((t) => t.id !== draggedId);
