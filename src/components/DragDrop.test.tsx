@@ -153,6 +153,18 @@ describe('pointer drag and drop', () => {
     expect(useTodoStore.getState().todos).toEqual(before);
   });
 
+  it('stays silent when released over its own row, as a plain click on the grip does', () => {
+    seedFlat();
+    render(<TodoTree getRect={getRect} />);
+    const before = useTodoStore.getState().todos;
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Move a' }), { button: 0, pointerId: 1, clientY: 10 });
+    fireEvent.pointerUp(window, { pointerId: 1, clientY: 12 });
+
+    expect(screen.getByRole('status').textContent?.trim()).toBe('');
+    expect(useTodoStore.getState().todos).toEqual(before);
+    expect(screen.getByRole('tree')).not.toHaveAttribute('data-dragging');
+  });
+
   it('aborts on pointer cancel without moving anything', () => {
     seedFlat();
     render(<TodoTree getRect={getRect} />);

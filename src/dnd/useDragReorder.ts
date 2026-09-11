@@ -79,7 +79,8 @@ export function useDragReorder(opts: Options): { onHandlePointerDown(id: string,
         if (sessionRef.current === null) return;
         if (ev.pointerId !== pointerId) return;
         const hit = hitTest(rows, ev.clientY + window.scrollY);
-        if (hit !== null) {
+        // A release over the dragged row itself (a plain click on the grip) is not a drop attempt.
+        if (hit !== null && hit.id !== id) {
           const target = blocked.has(hit.id) ? null : dropToPlacement(optsRef.current.getMap(), id, hit.id, hit.zone);
           optsRef.current.onDrop(id, target);
         }
