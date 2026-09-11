@@ -22,6 +22,7 @@ export function ColorPicker({ value, onChange, idPrefix }: Props) {
               checked={value === name}
               onChange={() => onChange(name)}
               aria-label={PALETTE[name].label}
+              title={PALETTE[name].label}
             />
             <span className={styles.dot} />
           </label>

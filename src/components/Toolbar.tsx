@@ -5,6 +5,7 @@ import { useSyncStatus } from '../store/syncStatusStore';
 import { useTodoStore } from '../store/todoStore';
 import { useUiStore } from '../store/uiStore';
 import { PlusIcon } from './icons';
+import { TIP } from './tips';
 import { TodoEditor } from './TodoEditor';
 import styles from './Toolbar.module.css';
 
@@ -31,20 +32,21 @@ export function Toolbar() {
         <h1 className={styles.brand}>Todo</h1>
         <span className={styles.status} data-state={sync} aria-live="polite">{LABELS[sync]}</span>
         <label className={styles.toggle}>
-          <input type="checkbox" checked={hideCompleted} onChange={(e) => setHideCompleted(e.target.checked)} aria-label="Hide completed" />
+          <input type="checkbox" checked={hideCompleted} onChange={(e) => setHideCompleted(e.target.checked)} aria-label="Hide completed" title={TIP.hideCompleted} />
           <span>Hide completed</span>
         </label>
         <button
           type="button"
           className={styles.primary}
           data-editor-toggle
+          title={TIP.newItem}
           aria-expanded={adding}
           onClick={() => useUiStore.getState().requestOpen({ kind: 'root' })}
         >
           <PlusIcon />
           <span>New item</span>
         </button>
-        <button type="button" className={styles.secondary} onClick={() => void signOut()}>Sign out</button>
+        <button type="button" className={styles.secondary} title={TIP.signOut} onClick={() => void signOut()}>Sign out</button>
       </div>
       {adding ? (
         <TodoEditor

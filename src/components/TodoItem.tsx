@@ -10,6 +10,7 @@ import { useTodoStore } from '../store/todoStore';
 import { editorKindFor, useUiStore } from '../store/uiStore';
 import type { Todo } from '../types';
 import { ChevronIcon, GripIcon, PencilIcon, PlusIcon, TrashIcon } from './icons';
+import { TIP } from './tips';
 import { visibleChildren, type TreeContext } from './TodoTree';
 import { TodoEditor } from './TodoEditor';
 import { DeleteDialog } from './DeleteDialog';
@@ -120,6 +121,7 @@ export function TodoItem({ todo, map, depth, tree }: Props) {
             ref={handleRef}
             className={styles.handle}
             aria-label={`Move ${todo.title}`}
+            title={TIP.move}
             aria-describedby={tree.hintId}
             onKeyDown={onHandleKeyDown}
             onPointerDown={(e) => tree.onHandlePointerDown(todo.id, e)}
@@ -131,6 +133,7 @@ export function TodoItem({ todo, map, depth, tree }: Props) {
             className={styles.checkbox}
             checked={todo.completed}
             aria-label={`Mark ${todo.title} ${todo.completed ? 'incomplete' : 'complete'}`}
+            title={todo.completed ? TIP.incomplete : TIP.complete}
             onChange={() => toggleTodo(todo.id)}
           />
 
@@ -138,6 +141,7 @@ export function TodoItem({ todo, map, depth, tree }: Props) {
             type="button"
             className={styles.titleButton}
             aria-label={`${showDetails ? 'Hide' : 'Show'} details for ${todo.title}`}
+            title={showDetails ? TIP.hideDetails : TIP.showDetails}
             aria-expanded={showDetails}
             onClick={() => {
               setShowDetails((v) => !v);
@@ -160,6 +164,7 @@ export function TodoItem({ todo, map, depth, tree }: Props) {
               type="button"
               className={`${styles.iconButton} ${collapsed ? '' : styles.open}`}
               aria-label={`${collapsed ? 'Expand' : 'Collapse'} ${todo.title}`}
+              title={collapsed ? TIP.expand : TIP.collapse}
               onClick={() => toggleCollapsed(todo.id)}
             >
               <ChevronIcon />
@@ -172,6 +177,7 @@ export function TodoItem({ todo, map, depth, tree }: Props) {
                 type="button"
                 className={styles.iconButton}
                 aria-label={`Edit ${todo.title}`}
+                title={TIP.edit}
                 data-editor-toggle
                 aria-expanded={editorKind === 'edit'}
                 onClick={() => useUiStore.getState().requestOpen({ kind: 'edit', id: todo.id })}
@@ -182,6 +188,7 @@ export function TodoItem({ todo, map, depth, tree }: Props) {
                 type="button"
                 className={styles.iconButton}
                 aria-label={`Add item under ${todo.title}`}
+                title={TIP.add}
                 data-editor-toggle
                 aria-expanded={editorKind === 'add'}
                 onClick={() => {
@@ -195,6 +202,7 @@ export function TodoItem({ todo, map, depth, tree }: Props) {
                 type="button"
                 className={styles.iconButton}
                 aria-label={`Delete ${todo.title}`}
+                title={TIP.delete}
                 onClick={() => {
                   // A discard prompt is already up; do not stack a delete dialog on top of it.
                   if (useUiStore.getState().pendingClose !== null) return;

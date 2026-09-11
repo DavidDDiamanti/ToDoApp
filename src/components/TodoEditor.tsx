@@ -4,6 +4,7 @@ import { normalizeTime, resolveDueDate } from '../lib/dates';
 import { useUiStore } from '../store/uiStore';
 import { ColorPicker } from './ColorPicker';
 import { ConfirmDialog } from './ConfirmDialog';
+import { TIP } from './tips';
 import styles from './TodoEditor.module.css';
 
 export interface EditorValues {
@@ -115,8 +116,8 @@ export function TodoEditor({ initial, heading, submitLabel, onSave, now = defaul
         <ColorPicker value={color} onChange={setColor} idPrefix={id} />
 
         <div className={styles.buttons}>
-          <button type="submit" className={styles.primary}>{submitLabel}</button>
-          <button type="button" className={styles.secondary} onClick={() => useUiStore.getState().requestClose()}>Cancel</button>
+          <button type="submit" className={styles.primary} title={submitLabel}>{submitLabel}</button>
+          <button type="button" className={styles.secondary} title={TIP.cancel} onClick={() => useUiStore.getState().requestClose()}>Cancel</button>
         </div>
       </form>
       {asking ? (
