@@ -1,0 +1,17 @@
+.group { border: 0; padding: 0; margin: 0; }
+.legend { font-size: var(--text-sm); color: var(--ink-muted); padding: 0; margin-bottom: var(--space-1); }
+.swatches { display: flex; flex-wrap: wrap; gap: var(--space-1); }
+.swatch {
+  width: var(--touch); height: var(--touch);
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: var(--radius); cursor: pointer; position: relative;
+}
+.swatch input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
+.dot {
+  width: 24px; height: 24px; border-radius: 50%;
+  background: var(--swatch);
+  box-shadow: 0 0 0 2px var(--surface);
+  transition: transform var(--motion) var(--ease);
+}
+.swatch input:checked + .dot { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--swatch); transform: scale(1.1); }
+.swatch input:focus-visible + .dot { outline: 2px solid var(--focus); outline-offset: 3px; }
