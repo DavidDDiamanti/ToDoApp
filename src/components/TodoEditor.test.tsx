@@ -97,6 +97,21 @@ describe('TodoEditor', () => {
     );
     expect(screen.getByLabelText('Due time')).toHaveValue('08:00');
   });
+
+  it('saves a seconds-bearing initial time back as HH:MM', async () => {
+    const onSave = vi.fn();
+    render(
+      <TodoEditor
+        initial={{ title: 'Milk', description: '', due_date: '2026-09-10', due_time: '09:30:00', color: 'slate' }}
+        heading="Edit item"
+        submitLabel="Save changes"
+        onSave={onSave}
+        onCancel={() => {}}
+      />,
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    expect(onSave).toHaveBeenCalledWith({ title: 'Milk', description: '', due_date: '2026-09-10', due_time: '09:30', color: 'slate' });
+  });
 });
 
 describe('editing from the tree', () => {

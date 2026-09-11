@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatDue, formatDueDate, isOverdue, nowISO, resolveDueDate, todayISO } from './dates';
+import { formatDue, formatDueDate, isOverdue, normalizeTime, nowISO, resolveDueDate, todayISO } from './dates';
 
 describe('todayISO', () => {
   it('formats a local date as YYYY-MM-DD with zero padding', () => {
@@ -91,5 +91,21 @@ describe('formatDue', () => {
 
   it('formats date and time together in de-DE', () => {
     expect(formatDue('2026-01-05', '15:37', 'de-DE')).toBe('05.01.2026, 15:37');
+  });
+});
+
+describe('normalizeTime', () => {
+  it('keeps a well formed HH:MM value', () => {
+    expect(normalizeTime('09:30')).toBe('09:30');
+  });
+  it('trims the seconds off an HH:MM:SS value', () => {
+    expect(normalizeTime('09:30:45')).toBe('09:30');
+  });
+  it('returns null for anything else', () => {
+    expect(normalizeTime('')).toBeNull();
+    expect(normalizeTime('9:30')).toBeNull();
+    expect(normalizeTime('24:00')).toBeNull();
+    expect(normalizeTime('09:60')).toBeNull();
+    expect(normalizeTime('half past nine')).toBeNull();
   });
 });

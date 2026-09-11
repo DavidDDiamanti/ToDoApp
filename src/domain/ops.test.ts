@@ -37,6 +37,15 @@ describe('updateFields', () => {
   it('updateFields accepts due_time', () => {
     expect(updateFields('a', { due_time: '08:00' }, NOW)).toEqual({ id: 'a', due_time: '08:00', updated_at: NOW });
   });
+  it('clears due_time when due_date is cleared', () => {
+    expect(updateFields('a', { due_date: null }, NOW)).toEqual({ id: 'a', due_date: null, due_time: null, updated_at: NOW });
+  });
+  it('clears a due_time supplied alongside a cleared due_date', () => {
+    expect(updateFields('a', { due_date: null, due_time: '08:00' }, NOW)).toEqual({ id: 'a', due_date: null, due_time: null, updated_at: NOW });
+  });
+  it('leaves due_time alone when due_date is not part of the patch', () => {
+    expect(updateFields('a', { title: 'New' }, NOW)).toEqual({ id: 'a', title: 'New', updated_at: NOW });
+  });
 });
 
 describe('toggleComplete', () => {

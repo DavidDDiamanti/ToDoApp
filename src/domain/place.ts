@@ -77,18 +77,43 @@ export function dropToPlacement(map: ChildrenMap, draggedId: string, targetId: s
   return { parentId, index };
 }
 
-export function keyMovePlacement(map: ChildrenMap, id: string, key: MoveKey): Placement | null {
+/**
+ * Where an Alt+arrow move should land. `isVisible` filters the siblings a move
+ * may step over, so a keyboard move never jumps a row the reader cannot see
+ * (completed rows while "hide completed" is on).
+ */
+export function keyMovePlacement(
+  map: ChildrenMap,
+  id: string,
+  key: MoveKey,
+  isVisible: (t: Todo) => boolean = () => true,
+): Placement | null {
   const parentId = parentKeyOf(map, id);
   if (parentId === undefined) return null;
   const siblings = map.get(parentId) ?? [];
   const i = siblings.findIndex((t) => t.id === id);
   if (i === -1) return null;
 
-  if (key === 'up') return i === 0 ? null : { parentId, index: i - 1 };
-  if (key === 'down') return i === siblings.length - 1 ? null : { parentId, index: i + 1 };
+  /** Index of the nearest visible sibling before `i`, or -1. */
+  const previousVisible = (): number => {
+    for (let j = i - 1; j >= 0; j -= 1) if (isVisible(siblings[j])) return j;
+    return -1;
+  };
+
+  if (key === 'up') {
+    const j = previousVisible();
+    return j === -1 ? null : { parentId, index: j };
+  }
+  if (key === 'down') {
+    for (let k = i + 1; k < siblings.length; k += 1) {
+      if (isVisible(siblings[k])) return { parentId, index: k };
+    }
+    return null;
+  }
   if (key === 'right') {
-    if (i === 0) return null;
-    const p = siblings[i - 1];
+    const j = previousVisible();
+    if (j === -1) return null;
+    const p = siblings[j];
     const bucket = (map.get(p.id) ?? []).filter((t) => t.id !== id);
     return { parentId: p.id, index: bucket.length };
   }

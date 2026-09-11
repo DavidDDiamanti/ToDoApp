@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { MockInstance } from 'vitest';
 import { TodoTree } from './TodoTree';
@@ -163,6 +163,20 @@ describe('pointer drag and drop', () => {
     expect(screen.getByRole('status').textContent?.trim()).toBe('');
     expect(useTodoStore.getState().todos).toEqual(before);
     expect(screen.getByRole('tree')).not.toHaveAttribute('data-dragging');
+  });
+
+  it('expands a collapsed destination row when an item is dropped onto it', () => {
+    seed(mk('a', null, { sort_order: 0 }), mk('b', null, { sort_order: 1 }), mk('bc', 'b', { sort_order: 0 }));
+    act(() => {
+      useTodoStore.getState().toggleCollapsed('b');
+    });
+    render(<TodoTree getRect={getRect} />);
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Move a' }), { button: 0, pointerId: 1, clientY: 10 });
+    fireEvent.pointerUp(window, { pointerId: 1, clientY: 66 });
+
+    expect(useTodoStore.getState().todos.a.parent_id).toBe('b');
+    expect(useTodoStore.getState().collapsed.b).toBeFalsy();
+    expect(item('a')).toBeInTheDocument();
   });
 
   it('aborts on pointer cancel without moving anything', () => {

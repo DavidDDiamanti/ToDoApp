@@ -120,6 +120,33 @@ describe('keyboard moves', () => {
     expect(status.textContent).not.toBe(firstText);
   });
 
+  describe('with completed rows hidden', () => {
+    it('refuses Alt+ArrowRight onto a hidden completed sibling above', async () => {
+      seed(mk('a', null, { sort_order: 0, completed: true }), mk('b', null, { sort_order: 1 }));
+      act(() => {
+        useTodoStore.getState().setHideCompleted(true);
+      });
+      render(<TodoTree />);
+      screen.getByRole('button', { name: 'Move b' }).focus();
+      await userEvent.keyboard('{Alt>}{ArrowRight}{/Alt}');
+      expect(screen.getByRole('status').textContent?.trim()).toBe('Cannot move b right');
+      expect(useTodoStore.getState().todos.b.parent_id).toBeNull();
+    });
+
+    it('refuses Alt+ArrowUp over a hidden completed sibling above', async () => {
+      seed(mk('a', null, { sort_order: 0, completed: true }), mk('b', null, { sort_order: 1 }));
+      act(() => {
+        useTodoStore.getState().setHideCompleted(true);
+      });
+      render(<TodoTree />);
+      const before = useTodoStore.getState().todos;
+      screen.getByRole('button', { name: 'Move b' }).focus();
+      await userEvent.keyboard('{Alt>}{ArrowUp}{/Alt}');
+      expect(screen.getByRole('status').textContent?.trim()).toBe('Cannot move b up');
+      expect(useTodoStore.getState().todos).toEqual(before);
+    });
+  });
+
   it('gives every handle an accessible name and a description pointing at the hint', () => {
     seed(mk('a', null, { sort_order: 0 }), mk('b', null, { sort_order: 1 }));
     render(<TodoTree />);

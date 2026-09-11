@@ -1,6 +1,6 @@
 import { useId, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
 import type { ColorName } from '../lib/colors';
-import { resolveDueDate } from '../lib/dates';
+import { normalizeTime, resolveDueDate } from '../lib/dates';
 import { ColorPicker } from './ColorPicker';
 import styles from './TodoEditor.module.css';
 
@@ -41,7 +41,7 @@ export function TodoEditor({ initial, heading, submitLabel, onSave, onCancel, no
       titleRef.current?.focus();
       return;
     }
-    const due_time = dueTime.length > 0 ? dueTime : null;
+    const due_time = normalizeTime(dueTime);
     const due_date = resolveDueDate(dueDate.length > 0 ? dueDate : null, due_time, now());
     onSave({ title: trimmed, description: description.trim(), due_date, due_time, color });
   }

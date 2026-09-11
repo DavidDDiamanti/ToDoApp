@@ -28,8 +28,10 @@ export function createTodo(input: CreateInput, parentId: string | null, map: Chi
   };
 }
 
+/** A time is never stored without a date, so clearing the date clears the time too. */
 export function updateFields(id: string, fields: Partial<Pick<Todo, 'title' | 'description' | 'due_date' | 'due_time' | 'color'>>, now: string): Patch {
-  return { id, ...fields, updated_at: now };
+  const cleared = fields.due_date === null ? { due_time: null } : {};
+  return { id, ...fields, ...cleared, updated_at: now };
 }
 
 export function toggleComplete(byId: Record<string, Todo>, map: ChildrenMap, id: string, now: string): Patch[] {

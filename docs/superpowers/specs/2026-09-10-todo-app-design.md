@@ -193,6 +193,7 @@ Requested after the first local run, before merging PR #1. Decisions were taken 
 - The editor shows "Due date" and "Due time" side by side. Either may be empty.
 - Resolution rule at save: if a time is set and the date is empty, the date becomes the next occurrence of that time. At 16:00 entering 15:37 gives tomorrow; entering 16:30 gives today; the same minute counts as passed. Month and year rollover follow the calendar. Pure function `resolveDueDate(date, time, now)` in `src/lib/dates.ts`.
 - Overdue: without a time, unchanged (overdue once the day has ended). With a time, overdue once the local instant `date + time` is earlier than now.
+- Overdue re-evaluates each minute. `useNow()` in `src/hooks/useNow.ts` returns a `Date` that advances on the next minute boundary and every 60 seconds after it; `TodoTree` reads it once and passes it through the tree context, so a row flips from due to overdue on its own with no interaction and no per-row timer. It is the only interval used for display; `useSync` stays the only sync interval.
 - Display: date only as before (`dateStyle: medium`); with time, `dateStyle: medium` plus `timeStyle: short` in the browser locale. `<time dateTime>` carries `YYYY-MM-DD` or `YYYY-MM-DDTHH:MM`.
 - Persisted store version becomes 2; migration fills `due_time: null` on older rows. Rows pulled from a project that has not run migration 0002 are normalised to `due_time: null`.
 
@@ -205,6 +206,8 @@ Requested after the first local run, before merging PR #1. Decisions were taken 
 - Visuals: the dragged row fades to 45 % opacity; before and after show a 3 px accent line at the top or bottom edge of the target row; onto shows an accent tint with a 2 px inset ring. Transitions use `--motion`, so reduced motion disables them. Text selection is suppressed while dragging.
 - The Move button, `MoveMenu` and the `'move'` editor mode are removed.
 - Not included: auto-scroll when dragging near the viewport edge (documented as a known issue).
+
+**Shipped additions.** Built on top of the list above while the feature was in review: the drop indicator stays visible in forced colors mode, where the accent tint and ring are dropped by the OS palette; a refused drop announces "Cannot move {title} here" instead of failing silently; a release over the dragged row's own row counts as a plain click on the grip and announces nothing; a drag ends when the window loses focus or when a mouse move reports no button held, so a release outside the window cannot leave the session stuck; the grabbing cursor applies tree wide for the duration of a drag, not just on the handle; a collapsed destination expands before the move lands, for keyboard moves and pointer drops alike, so the row is never swallowed; and keyboard moves skip siblings hidden by "hide completed", refusing the move when every neighbour in that direction is hidden.
 
 ### 12.3 Expired sign-in link
 

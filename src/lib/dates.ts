@@ -28,6 +28,17 @@ export function isOverdue(todo: Pick<Todo, 'due_date' | 'due_time' | 'completed'
   return new Date(y, m - 1, d, hh, mm).getTime() < now.getTime();
 }
 
+const TIME_RE = /^([01]\d|2[0-3]):([0-5]\d)(:[0-5]\d)?$/;
+
+/**
+ * Narrow an `<input type="time">` value to the stored `HH:MM` shape. Browsers
+ * may hand back `HH:MM:SS`, and the Postgres format check rejects it.
+ */
+export function normalizeTime(value: string): string | null {
+  const m = TIME_RE.exec(value);
+  return m === null ? null : `${m[1]}:${m[2]}`;
+}
+
 export function formatDueDate(iso: string, locale?: string): string {
   const [y, m, d] = iso.split('-').map(Number);
   return new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(new Date(y, m - 1, d));

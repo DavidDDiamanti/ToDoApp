@@ -42,7 +42,7 @@ export function TodoItem({ todo, map, depth, tree }: Props) {
 
   const children = visibleChildren(map, todo.id, hideCompleted);
   const hasChildren = (map.get(todo.id)?.length ?? 0) > 0;
-  const overdue = isOverdue(todo, new Date());
+  const overdue = isOverdue(todo, tree.now);
   const railColor = PALETTE[todo.color].hex;
 
   useEffect(() => {
@@ -64,7 +64,9 @@ export function TodoItem({ todo, map, depth, tree }: Props) {
     if (key === null) return;
     e.preventDefault();
     const currentMap = buildChildrenMap(Object.values(useTodoStore.getState().todos));
-    const target = keyMovePlacement(currentMap, todo.id, key);
+    const hidden = useTodoStore.getState().hideCompleted;
+    const isVisible = hidden ? (t: Todo) => !t.completed : () => true;
+    const target = keyMovePlacement(currentMap, todo.id, key, isVisible);
     const dragStore = useDragStore.getState();
     if (target === null) {
       dragStore.announce(`Cannot move ${todo.title} ${key}`);

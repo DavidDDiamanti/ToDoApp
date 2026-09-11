@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TodoTree } from './TodoTree';
@@ -83,6 +83,17 @@ describe('TodoTree', () => {
       render(<TodoTree />);
       expect(screen.getByRole('treeitem', { name: /past/i })).toHaveAttribute('data-overdue', 'true');
       expect(screen.getByRole('treeitem', { name: /future/i })).not.toHaveAttribute('data-overdue');
+    });
+
+    it('flags an item once the clock passes its due minute, with no interaction', () => {
+      vi.useFakeTimers({ now: new Date(2026, 8, 10, 12, 0) });
+      seed(mk('soon', null, { title: 'Soon', due_date: '2026-09-10', due_time: '12:01' }));
+      render(<TodoTree />);
+      expect(screen.getByRole('treeitem', { name: /soon/i })).not.toHaveAttribute('data-overdue');
+      act(() => {
+        vi.advanceTimersByTime(2 * 60_000);
+      });
+      expect(screen.getByRole('treeitem', { name: /soon/i })).toHaveAttribute('data-overdue', 'true');
     });
   });
 

@@ -5,6 +5,7 @@ import { describePlacement, type Placement } from '../domain/place';
 import { useDragStore } from '../dnd/dragStore';
 import type { RectReader } from '../dnd/hitTest';
 import { useDragReorder } from '../dnd/useDragReorder';
+import { useNow } from '../hooks/useNow';
 import { moveTodoTo } from '../store/actions';
 import { useTodoStore } from '../store/todoStore';
 import type { Todo } from '../types';
@@ -13,6 +14,8 @@ import styles from './TodoTree.module.css';
 
 export interface TreeContext {
   hintId: string;
+  /** Shared clock for time-dependent display; ticks once a minute, so `tree` changes then. */
+  now: Date;
   onHandlePointerDown(id: string, e: ReactPointerEvent<HTMLElement>): void;
 }
 
@@ -34,6 +37,7 @@ export function TodoTree({ getRect }: Props) {
   const map = useMemo(() => buildChildrenMap(Object.values(todos)), [todos]);
   const roots = visibleChildren(map, null, hideCompleted);
   const hintId = useId();
+  const now = useNow();
 
   const rootRef = useRef<HTMLUListElement>(null);
   const mapRef = useRef(map);
@@ -49,10 +53,13 @@ export function TodoTree({ getRect }: Props) {
       return;
     }
     const description = describePlacement(todosRef.current, mapRef.current, id, target);
+    // A collapsed destination would swallow the row, so open it before the move lands.
+    const { collapsed, toggleCollapsed } = useTodoStore.getState();
+    if (target.parentId !== null && collapsed[target.parentId] === true) toggleCollapsed(target.parentId);
     useDragStore.getState().announce(moveTodoTo(id, target) ? description : refused);
   }, []);
   const { onHandlePointerDown } = useDragReorder({ rootRef, getMap, getRect, onDrop });
-  const tree = useMemo<TreeContext>(() => ({ hintId, onHandlePointerDown }), [hintId, onHandlePointerDown]);
+  const tree = useMemo<TreeContext>(() => ({ hintId, now, onHandlePointerDown }), [hintId, now, onHandlePointerDown]);
 
   return (
     <>

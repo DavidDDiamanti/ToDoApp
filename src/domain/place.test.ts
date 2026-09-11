@@ -239,6 +239,41 @@ describe('keyMovePlacement', () => {
   it('left is null at the root', () => {
     expect(keyMovePlacement(map, 'a', 'left')).toBeNull();
   });
+
+  describe('with a visibility filter', () => {
+    const all2 = byId(
+      mk('h0', null, { sort_order: 0, completed: true }),
+      mk('v1', null, { sort_order: 1 }),
+      mk('h2', null, { sort_order: 2, completed: true }),
+      mk('v3', null, { sort_order: 3 }),
+      mk('h4', null, { sort_order: 4, completed: true }),
+      mk('v1c', 'v1', { sort_order: 0 }),
+    );
+    const map2 = buildChildrenMap(Object.values(all2));
+    const shown = (t: Todo) => !t.completed;
+
+    it('up skips a hidden sibling and lands above the nearest visible one', () => {
+      expect(keyMovePlacement(map2, 'v3', 'up', shown)).toEqual({ parentId: null, index: 1 });
+    });
+    it('down skips a hidden sibling and lands below the nearest visible one', () => {
+      expect(keyMovePlacement(map2, 'v1', 'down', shown)).toEqual({ parentId: null, index: 3 });
+    });
+    it('right nests under the nearest previous visible sibling, not a hidden one', () => {
+      expect(keyMovePlacement(map2, 'v3', 'right', shown)).toEqual({ parentId: 'v1', index: 1 });
+    });
+    it('up is null when every sibling above is hidden', () => {
+      expect(keyMovePlacement(map2, 'v1', 'up', shown)).toBeNull();
+    });
+    it('down is null when every sibling below is hidden', () => {
+      expect(keyMovePlacement(map2, 'v3', 'down', shown)).toBeNull();
+    });
+    it('right is null when every sibling above is hidden', () => {
+      expect(keyMovePlacement(map2, 'v1', 'right', shown)).toBeNull();
+    });
+    it('treats everything as visible when no filter is given', () => {
+      expect(keyMovePlacement(map2, 'v3', 'up')).toEqual({ parentId: null, index: 2 });
+    });
+  });
 });
 
 describe('describePlacement', () => {
