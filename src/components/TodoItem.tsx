@@ -1,36 +1,70 @@
-import { useState } from 'react';
-import type { CSSProperties } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import type { CSSProperties, KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { formatDue, isOverdue } from '../lib/dates';
 import { PALETTE } from '../lib/colors';
-import type { ChildrenMap } from '../domain/tree';
+import { buildChildrenMap, type ChildrenMap } from '../domain/tree';
+import { describePlacement, keyMovePlacement, type MoveKey } from '../domain/place';
+import { useDragStore } from '../dnd/dragStore';
 import { addTodo, editTodo, moveTodoTo, removeTodo, toggleTodo } from '../store/actions';
 import { useTodoStore } from '../store/todoStore';
 import type { Todo } from '../types';
-import { ChevronIcon, MoveIcon, PencilIcon, PlusIcon, TrashIcon } from './icons';
-import { visibleChildren } from './TodoTree';
+import { ChevronIcon, GripIcon, PencilIcon, PlusIcon, TrashIcon } from './icons';
+import { visibleChildren, type TreeContext } from './TodoTree';
 import { TodoEditor } from './TodoEditor';
 import { DeleteDialog } from './DeleteDialog';
-import { MoveMenu } from './MoveMenu';
 import styles from './TodoItem.module.css';
 
 interface Props {
   todo: Todo;
   map: ChildrenMap;
   depth: number;
+  tree: TreeContext;
 }
 
-export function TodoItem({ todo, map, depth }: Props) {
+function moveKeyFromArrow(key: string): MoveKey | null {
+  if (key === 'ArrowUp') return 'up';
+  if (key === 'ArrowDown') return 'down';
+  if (key === 'ArrowLeft') return 'left';
+  if (key === 'ArrowRight') return 'right';
+  return null;
+}
+
+export function TodoItem({ todo, map, depth, tree }: Props) {
   const collapsed = useTodoStore((s) => s.collapsed[todo.id] === true);
   const hideCompleted = useTodoStore((s) => s.hideCompleted);
   const toggleCollapsed = useTodoStore((s) => s.toggleCollapsed);
-  const todos = useTodoStore((s) => s.todos);
+  const wantsFocus = useDragStore((s) => s.focusId === todo.id);
   const [showDetails, setShowDetails] = useState(false);
-  const [mode, setMode] = useState<'view' | 'edit' | 'add' | 'move' | 'delete'>('view');
+  const [mode, setMode] = useState<'view' | 'edit' | 'add' | 'delete'>('view');
+  const handleRef = useRef<HTMLButtonElement>(null);
 
   const children = visibleChildren(map, todo.id, hideCompleted);
   const hasChildren = (map.get(todo.id)?.length ?? 0) > 0;
   const overdue = isOverdue(todo, new Date());
   const railColor = PALETTE[todo.color].hex;
+
+  useEffect(() => {
+    if (!wantsFocus) return;
+    handleRef.current?.focus();
+    useDragStore.getState().requestFocus(null);
+  }, [wantsFocus]);
+
+  const onHandleKeyDown = (e: ReactKeyboardEvent<HTMLButtonElement>) => {
+    if (!e.altKey) return;
+    const key = moveKeyFromArrow(e.key);
+    if (key === null) return;
+    e.preventDefault();
+    const currentMap = buildChildrenMap(Object.values(useTodoStore.getState().todos));
+    const target = keyMovePlacement(currentMap, todo.id, key);
+    const dragStore = useDragStore.getState();
+    if (target === null) {
+      dragStore.announce(`Cannot move ${todo.title} ${key}`);
+      return;
+    }
+    dragStore.announce(describePlacement(useTodoStore.getState().todos, currentMap, todo.id, target));
+    moveTodoTo(todo.id, target);
+    dragStore.requestFocus(todo.id);
+  };
 
   return (
     <li
@@ -40,10 +74,22 @@ export function TodoItem({ todo, map, depth }: Props) {
       data-overdue={overdue ? 'true' : undefined}
       data-details={showDetails ? 'true' : undefined}
       data-completed={todo.completed ? 'true' : undefined}
+      data-todo-id={todo.id}
       className={styles.item}
       style={{ '--item-color': railColor } as CSSProperties}
     >
       <div className={styles.row}>
+        <button
+          type="button"
+          ref={handleRef}
+          className={styles.handle}
+          aria-label={`Move ${todo.title}`}
+          aria-describedby={tree.hintId}
+          onKeyDown={onHandleKeyDown}
+          onPointerDown={(e) => tree.onHandlePointerDown(todo.id, e)}
+        >
+          <GripIcon />
+        </button>
         {hasChildren ? (
           <button
             type="button"
@@ -93,7 +139,6 @@ export function TodoItem({ todo, map, depth }: Props) {
           >
             <PlusIcon />
           </button>
-          <button type="button" className={styles.iconButton} aria-label={`Move ${todo.title}`} onClick={() => setMode('move')}><MoveIcon /></button>
           <button
             type="button"
             className={styles.iconButton}
@@ -123,19 +168,6 @@ export function TodoItem({ todo, map, depth }: Props) {
           onCancel={() => setMode('view')}
         />
       ) : null}
-      {mode === 'move' ? (
-        <MoveMenu
-          todo={todo}
-          map={map}
-          todos={todos}
-          onMove={(p) => {
-            const bucket = (map.get(p) ?? []).filter((t) => t.id !== todo.id);
-            moveTodoTo(todo.id, { parentId: p, index: bucket.length });
-            setMode('view');
-          }}
-          onCancel={() => setMode('view')}
-        />
-      ) : null}
       {mode === 'delete' ? (
         <DeleteDialog
           title={todo.title}
@@ -154,7 +186,7 @@ export function TodoItem({ todo, map, depth }: Props) {
       {hasChildren && !collapsed && children.length > 0 ? (
         <ul role="group" className={styles.children}>
           {children.map((c) => (
-            <TodoItem key={c.id} todo={c} map={map} depth={depth + 1} />
+            <TodoItem key={c.id} todo={c} map={map} depth={depth + 1} tree={tree} />
           ))}
         </ul>
       ) : null}

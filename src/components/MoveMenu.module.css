@@ -1,4 +1,0 @@
-.menu { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; padding: var(--space-2) var(--space-3) var(--space-3) calc(var(--touch) + var(--space-4)); }
-.label { font-size: var(--text-sm); color: var(--ink-muted); width: 100%; }
-.select { min-height: var(--touch); padding: 0 var(--space-3); border: 1px solid var(--line); border-radius: var(--radius); background: var(--bg); color: var(--ink); flex: 1; }
-.cancel { min-height: var(--touch); padding: 0 var(--space-3); border: 1px solid var(--line); border-radius: var(--radius); background: transparent; color: var(--ink); }

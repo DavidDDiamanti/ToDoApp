@@ -1,12 +1,12 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { ChevronIcon, MoveIcon, PencilIcon, PlusIcon, TrashIcon } from './icons';
+import { ChevronIcon, GripIcon, PencilIcon, PlusIcon, TrashIcon } from './icons';
 
 describe('icons', () => {
   it('render as decorative SVGs hidden from assistive tech', () => {
     render(
       <div>
-        <ChevronIcon /><PlusIcon /><PencilIcon /><MoveIcon /><TrashIcon />
+        <ChevronIcon /><PlusIcon /><PencilIcon /><GripIcon /><TrashIcon />
       </div>,
     );
     const svgs = document.querySelectorAll('svg');
