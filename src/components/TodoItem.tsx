@@ -125,19 +125,6 @@ export function TodoItem({ todo, map, depth, tree }: Props) {
         >
           <GripIcon />
         </button>
-        {hasChildren ? (
-          <button
-            type="button"
-            className={`${styles.iconButton} ${collapsed ? '' : styles.open}`}
-            aria-label={`${collapsed ? 'Expand' : 'Collapse'} ${todo.title}`}
-            onClick={() => toggleCollapsed(todo.id)}
-          >
-            <ChevronIcon />
-          </button>
-        ) : (
-          <span className={styles.spacer} />
-        )}
-
         <input
           type="checkbox"
           className={styles.checkbox}
@@ -166,6 +153,17 @@ export function TodoItem({ todo, map, depth, tree }: Props) {
             </time>
           ) : null}
         </button>
+
+        {hasChildren ? (
+          <button
+            type="button"
+            className={`${styles.iconButton} ${collapsed ? '' : styles.open}`}
+            aria-label={`${collapsed ? 'Expand' : 'Collapse'} ${todo.title}`}
+            onClick={() => toggleCollapsed(todo.id)}
+          >
+            <ChevronIcon />
+          </button>
+        ) : null}
 
         {isActive ? (
           <div className={styles.actions}>

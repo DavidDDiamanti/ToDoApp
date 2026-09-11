@@ -156,4 +156,29 @@ describe('TodoTree', () => {
     await userEvent.click(screen.getByRole('button', { name: /collapse shopping/i }));
     expect(useUiStore.getState().activeItemId).toBeNull();
   });
+
+  it('a parent row orders handle, checkbox, title, then the chevron', () => {
+    seed(mk('shop', null, { title: 'Shopping' }), mk('shoes', 'shop', { title: 'Shoe store' }));
+    render(<TodoTree />);
+    const item = screen.getByRole('treeitem', { name: /shopping/i });
+    const row = item.querySelector('[data-todo-id]') as HTMLElement;
+    expect(row.children).toHaveLength(4);
+    expect(row.children[0]).toHaveAttribute('aria-label', 'Move Shopping');
+    expect(row.children[1]).toHaveAttribute('type', 'checkbox');
+    expect(row.children[2]).toHaveAttribute('aria-label', 'Show details for Shopping');
+    expect(row.children[3].tagName).toBe('BUTTON');
+    expect(row.children[3]).toHaveAttribute('aria-label', 'Collapse Shopping');
+  });
+
+  it('a leaf row has nothing after the title', () => {
+    seed(mk('a', null, { title: 'Alpha' }));
+    render(<TodoTree />);
+    const item = screen.getByRole('treeitem', { name: /alpha/i });
+    const row = item.querySelector('[data-todo-id]') as HTMLElement;
+    expect(row.querySelector('.spacer')).toBeNull();
+    expect(row.children).toHaveLength(3);
+    expect(row.children[0]).toHaveAttribute('aria-label', 'Move Alpha');
+    expect(row.children[1]).toHaveAttribute('type', 'checkbox');
+    expect(row.children[2]).toHaveAttribute('aria-label', 'Show details for Alpha');
+  });
 });
