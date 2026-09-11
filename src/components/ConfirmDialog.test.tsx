@@ -106,3 +106,85 @@ describe('ConfirmDialog', () => {
     expect(first).toHaveFocus();
   });
 });
+
+describe('ConfirmDialog focus and dismissal', () => {
+  it('restores focus to the element that was focused before it opened', () => {
+    const opener = document.createElement('button');
+    opener.textContent = 'Open';
+    document.body.appendChild(opener);
+    opener.focus();
+    expect(opener).toHaveFocus();
+
+    const { unmount } = render(
+      <ConfirmDialog
+        heading="Delete 'Alpha'?"
+        body="It will be removed from your list."
+        primary={{ label: 'Delete', tone: 'danger', onClick: vi.fn() }}
+        secondary={{ label: 'Cancel', onClick: vi.fn() }}
+      />,
+    );
+    expect(screen.getByRole('button', { name: 'Delete' })).toHaveFocus();
+
+    unmount();
+    expect(opener).toHaveFocus();
+    opener.remove();
+  });
+
+  it('does not throw when the opener was removed before it closed', () => {
+    const opener = document.createElement('button');
+    opener.textContent = 'Open';
+    document.body.appendChild(opener);
+    opener.focus();
+
+    const { unmount } = render(
+      <ConfirmDialog
+        heading="Delete 'Alpha'?"
+        body="It will be removed from your list."
+        primary={{ label: 'Delete', tone: 'danger', onClick: vi.fn() }}
+        secondary={{ label: 'Cancel', onClick: vi.fn() }}
+      />,
+    );
+    opener.remove();
+    expect(() => unmount()).not.toThrow();
+    expect(document.activeElement).toBe(document.body);
+  });
+
+  it('Escape closes the dialog when focus is on the body', () => {
+    const { secondary } = renderDialog();
+    (document.activeElement as HTMLElement).blur();
+    expect(document.activeElement).toBe(document.body);
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(secondary.onClick).toHaveBeenCalledTimes(1);
+  });
+
+  it('pointerdown on the panel then click on the backdrop does not dismiss', () => {
+    const { secondary } = renderDialog();
+    const dialog = screen.getByRole('dialog');
+    const backdrop = dialog.parentElement as HTMLElement;
+    fireEvent.pointerDown(dialog);
+    fireEvent.click(backdrop);
+    expect(secondary.onClick).not.toHaveBeenCalled();
+  });
+
+  it('a cancelled pointer sequence does not dismiss on the next click', () => {
+    const { secondary } = renderDialog();
+    const backdrop = screen.getByRole('dialog').parentElement as HTMLElement;
+    fireEvent.pointerDown(backdrop);
+    fireEvent.pointerCancel(backdrop);
+    fireEvent.click(backdrop);
+    expect(secondary.onClick).not.toHaveBeenCalled();
+  });
+
+  it('Tab and Shift+Tab cycle in the two-button dialog', async () => {
+    renderDialog();
+    const first = screen.getByRole('button', { name: 'Delete' });
+    const last = screen.getByRole('button', { name: 'Cancel' });
+    expect(first).toHaveFocus();
+    await userEvent.tab();
+    expect(last).toHaveFocus();
+    await userEvent.tab();
+    expect(first).toHaveFocus();
+    await userEvent.tab({ shift: true });
+    expect(last).toHaveFocus();
+  });
+});

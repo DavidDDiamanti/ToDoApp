@@ -1,4 +1,11 @@
-import { useId, useRef, type KeyboardEvent, type MouseEvent, type PointerEvent } from 'react';
+import {
+  useEffect,
+  useId,
+  useRef,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type MouseEvent,
+  type PointerEvent,
+} from 'react';
 import styles from './ConfirmDialog.module.css';
 
 interface DialogAction {
@@ -14,25 +21,43 @@ interface ConfirmDialogProps {
   secondary: DialogAction;
 }
 
+const FOCUSABLE =
+  'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
 export function ConfirmDialog({ heading, body, primary, extra, secondary }: ConfirmDialogProps) {
   const id = useId();
   const panelRef = useRef<HTMLDivElement>(null);
   const backdropPressed = useRef(false);
+  const openerRef = useRef<Element | null>(document.activeElement);
+  const secondaryRef = useRef(secondary);
+  secondaryRef.current = secondary;
 
-  function onKeyDown(e: KeyboardEvent<HTMLDivElement>) {
-    if (e.key === 'Escape') {
+  useEffect(() => {
+    const opener = openerRef.current;
+    return () => {
+      if (opener instanceof HTMLElement && opener.isConnected) opener.focus();
+    };
+  }, []);
+
+  useEffect(() => {
+    const onDocumentKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
       e.stopPropagation();
       e.preventDefault();
-      secondary.onClick();
-      return;
-    }
+      secondaryRef.current.onClick();
+    };
+    document.addEventListener('keydown', onDocumentKeyDown, true);
+    return () => document.removeEventListener('keydown', onDocumentKeyDown, true);
+  }, []);
+
+  function onKeyDown(e: ReactKeyboardEvent<HTMLDivElement>) {
     if (e.key !== 'Tab') return;
     e.stopPropagation();
     if (!panelRef.current) return;
-    const buttons = Array.from(panelRef.current.querySelectorAll<HTMLButtonElement>('button:not([disabled])'));
-    if (buttons.length === 0) return;
-    const first = buttons[0];
-    const last = buttons[buttons.length - 1];
+    const focusable = Array.from(panelRef.current.querySelectorAll<HTMLElement>(FOCUSABLE));
+    if (focusable.length === 0) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
     const active = document.activeElement;
     if (e.shiftKey && active === first) {
       e.preventDefault();
@@ -44,7 +69,12 @@ export function ConfirmDialog({ heading, body, primary, extra, secondary }: Conf
   }
 
   function onBackdropPointerDown(e: PointerEvent<HTMLDivElement>) {
-    backdropPressed.current = e.target === e.currentTarget;
+    backdropPressed.current = false;
+    if (e.target === e.currentTarget) backdropPressed.current = true;
+  }
+
+  function onBackdropPointerCancel() {
+    backdropPressed.current = false;
   }
 
   function onBackdropClick(e: MouseEvent<HTMLDivElement>) {
@@ -57,6 +87,7 @@ export function ConfirmDialog({ heading, body, primary, extra, secondary }: Conf
     <div
       className={styles.backdrop}
       onPointerDown={onBackdropPointerDown}
+      onPointerCancel={onBackdropPointerCancel}
       onClick={onBackdropClick}
       onKeyDown={onKeyDown}
     >
