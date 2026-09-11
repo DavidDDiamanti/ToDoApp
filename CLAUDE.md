@@ -13,6 +13,8 @@ Nested, colour-coded todo PWA. Vite + React 19 + TypeScript, Zustand persisted t
 - Timestamps are ISO strings; compare with `Date.parse`.
 - UI copy in sentence case. Touch targets 44px. SVG icons with labels. Respect reduced motion.
 - Design tokens in `src/design/tokens.css`; item colours (`--todo-*`) are separate from chrome colours.
+- Global listeners live in exactly two hooks: useDragReorder (window, during a drag) and useClickOutsideEditor (document pointerdown, mounted in Shell).
+- UI-only state (active item, open editor, discard prompt) lives in src/store/uiStore.ts and is never persisted.
 
 ## Docs
 - Spec: `docs/superpowers/specs/2026-09-10-todo-app-design.md`
