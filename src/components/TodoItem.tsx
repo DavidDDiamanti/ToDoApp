@@ -39,7 +39,8 @@ export function TodoItem({ todo, map, depth, tree }: Props) {
   const dropZone = useDragStore((s) => (s.indicator?.targetId === todo.id ? s.indicator.zone : null));
   const isActive = useUiStore((s) => s.activeItemId === todo.id);
   const [showDetails, setShowDetails] = useState(false);
-  const [mode, setMode] = useState<'view' | 'edit' | 'add' | 'delete'>('view');
+  const [editorMode, setEditorMode] = useState<'edit' | 'add' | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const handleRef = useRef<HTMLButtonElement>(null);
 
   const children = visibleChildren(map, todo.id, hideCompleted);
@@ -161,12 +162,12 @@ export function TodoItem({ todo, map, depth, tree }: Props) {
 
         {isActive ? (
           <div className={styles.actions}>
-            <button type="button" className={styles.iconButton} aria-label={`Edit ${todo.title}`} onClick={() => setMode('edit')}><PencilIcon /></button>
+            <button type="button" className={styles.iconButton} aria-label={`Edit ${todo.title}`} onClick={() => setEditorMode('edit')}><PencilIcon /></button>
             <button
               type="button"
               className={styles.iconButton}
               aria-label={`Add item under ${todo.title}`}
-              onClick={() => { setMode('add'); if (collapsed) toggleCollapsed(todo.id); }}
+              onClick={() => { setEditorMode('add'); if (collapsed) toggleCollapsed(todo.id); }}
             >
               <PlusIcon />
             </button>
@@ -174,7 +175,7 @@ export function TodoItem({ todo, map, depth, tree }: Props) {
               type="button"
               className={styles.iconButton}
               aria-label={`Delete ${todo.title}`}
-              onClick={() => (hasChildren ? setMode('delete') : removeTodo(todo.id, 'subtree'))}
+              onClick={() => setConfirmingDelete(true)}
             >
               <TrashIcon />
             </button>
@@ -182,30 +183,31 @@ export function TodoItem({ todo, map, depth, tree }: Props) {
         ) : null}
       </div>
 
-      {mode === 'edit' ? (
+      {editorMode === 'edit' ? (
         <TodoEditor
           initial={{ title: todo.title, description: todo.description, due_date: todo.due_date, due_time: todo.due_time, color: todo.color }}
           heading={`Edit ${todo.title}`}
           submitLabel="Save changes"
-          onSave={(v) => { editTodo(todo.id, v); setMode('view'); }}
-          onCancel={() => setMode('view')}
+          onSave={(v) => { editTodo(todo.id, v); setEditorMode(null); }}
+          onCancel={() => setEditorMode(null)}
         />
       ) : null}
-      {mode === 'add' ? (
+      {editorMode === 'add' ? (
         <TodoEditor
           initial={{ title: '', description: '', due_date: null, due_time: null, color: todo.color }}
           heading={`New item under ${todo.title}`}
           submitLabel="Add item"
-          onSave={(v) => { addTodo(v, todo.id); setMode('view'); }}
-          onCancel={() => setMode('view')}
+          onSave={(v) => { addTodo(v, todo.id); setEditorMode(null); }}
+          onCancel={() => setEditorMode(null)}
         />
       ) : null}
-      {mode === 'delete' ? (
+      {confirmingDelete ? (
         <DeleteDialog
           title={todo.title}
-          onDeleteAll={() => { removeTodo(todo.id, 'subtree'); setMode('view'); }}
-          onPromote={() => { removeTodo(todo.id, 'promote'); setMode('view'); }}
-          onCancel={() => setMode('view')}
+          hasChildren={hasChildren}
+          onDeleteAll={() => { removeTodo(todo.id, 'subtree'); setConfirmingDelete(false); }}
+          onPromote={() => { removeTodo(todo.id, 'promote'); setConfirmingDelete(false); }}
+          onCancel={() => setConfirmingDelete(false)}
         />
       ) : null}
 

@@ -13,6 +13,7 @@
 .heading { margin: 0; font-family: var(--font-display); font-size: var(--text-lg); }
 .body { margin: 0; color: var(--ink-muted); }
 .buttons { display: grid; gap: var(--space-2); }
-.danger, .secondary { min-height: var(--touch); border-radius: var(--radius); border: 1px solid transparent; padding: 0 var(--space-4); }
+.danger, .primary, .secondary { min-height: var(--touch); border-radius: var(--radius); border: 1px solid transparent; padding: 0 var(--space-4); }
 .danger { background: var(--danger); color: var(--on-danger); }
+.primary { background: var(--accent); color: var(--on-accent); }
 .secondary { background: transparent; border-color: var(--line); color: var(--ink); }

@@ -19,13 +19,27 @@ beforeEach(() => {
 });
 
 describe('deleting', () => {
-  it('deletes a leaf immediately without a dialog', async () => {
+  it('asks before deleting a leaf', async () => {
     seed(mk('a', null, { title: 'Alpha' }));
     render(<TodoTree />);
     await pressTitle('Alpha');
     await userEvent.click(screen.getByRole('button', { name: 'Delete Alpha' }));
-    expect(screen.queryByRole('dialog')).toBeNull();
+    const dialog = screen.getByRole('dialog', { name: /delete 'alpha'\?/i });
+    expect(dialog).toBeInTheDocument();
+    expect(useTodoStore.getState().todos.a.deleted_at).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: 'Delete' }));
     expect(useTodoStore.getState().todos.a.deleted_at).not.toBeNull();
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('cancelling a leaf delete keeps it', async () => {
+    seed(mk('a', null, { title: 'Alpha' }));
+    render(<TodoTree />);
+    await pressTitle('Alpha');
+    await userEvent.click(screen.getByRole('button', { name: 'Delete Alpha' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(useTodoStore.getState().todos.a.deleted_at).toBeNull();
   });
 
   it('asks what to do with children and can delete them too', async () => {
@@ -33,7 +47,7 @@ describe('deleting', () => {
     render(<TodoTree />);
     await pressTitle('Alpha');
     await userEvent.click(screen.getByRole('button', { name: 'Delete Alpha' }));
-    const dialog = screen.getByRole('dialog', { name: /delete alpha/i });
+    const dialog = screen.getByRole('dialog', { name: /delete 'alpha'\?/i });
     expect(dialog).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Delete children too' }));
     expect(useTodoStore.getState().todos.b.deleted_at).not.toBeNull();
