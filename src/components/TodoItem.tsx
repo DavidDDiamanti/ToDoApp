@@ -209,8 +209,7 @@ export function TodoItem({ todo, map, depth, tree }: Props) {
           initial={{ title: todo.title, description: todo.description, due_date: todo.due_date, due_time: todo.due_time, color: todo.color }}
           heading={`Edit ${todo.title}`}
           submitLabel="Save changes"
-          onSave={(v) => { editTodo(todo.id, v); useUiStore.getState().closeEditor(); }}
-          onCancel={() => useUiStore.getState().requestClose()}
+          onSave={(v) => editTodo(todo.id, v)}
         />
       ) : null}
       {editorKind === 'add' ? (
@@ -218,8 +217,7 @@ export function TodoItem({ todo, map, depth, tree }: Props) {
           initial={{ title: '', description: '', due_date: null, due_time: null, color: todo.color }}
           heading={`New item under ${todo.title}`}
           submitLabel="Add item"
-          onSave={(v) => { addTodo(v, todo.id); useUiStore.getState().closeEditor(); }}
-          onCancel={() => useUiStore.getState().requestClose()}
+          onSave={(v) => addTodo(v, todo.id)}
         />
       ) : null}
       {confirmingDelete ? (

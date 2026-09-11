@@ -72,3 +72,49 @@ describe('editor flow', () => {
     expect(useUiStore.getState().openEditor).toBeNull();
   });
 });
+
+describe('discard prompt across editors', () => {
+  it('displacing a dirty editor asks first and Discard opens the requested one', async () => {
+    seed(mk('a', null, { title: 'Alpha' }));
+    render(<><Toolbar /><TodoTree /></>);
+    await pressTitle('Alpha');
+    await userEvent.click(screen.getByRole('button', { name: 'Edit Alpha' }));
+    await userEvent.type(screen.getByLabelText('Title'), '!');
+    await userEvent.click(screen.getByRole('button', { name: 'Add item under Alpha' }));
+    expect(screen.getByRole('dialog', { name: 'Discard changes?' })).toBeInTheDocument();
+    expect(screen.getByRole('form', { name: 'Edit Alpha' })).toBeInTheDocument();
+    expect(screen.queryByRole('form', { name: 'New item under Alpha' })).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: 'Discard' }));
+    expect(screen.getByRole('form', { name: 'New item under Alpha' })).toBeInTheDocument();
+    expect(screen.queryByRole('form', { name: 'Edit Alpha' })).toBeNull();
+    expect(useUiStore.getState().editorDirty).toBe(false);
+  });
+
+  it('Keep editing leaves the first editor open with its draft', async () => {
+    seed(mk('a', null, { title: 'Alpha' }));
+    render(<><Toolbar /><TodoTree /></>);
+    await pressTitle('Alpha');
+    await userEvent.click(screen.getByRole('button', { name: 'Edit Alpha' }));
+    await userEvent.type(screen.getByLabelText('Title'), '!');
+    await userEvent.click(screen.getByRole('button', { name: 'New item' }));
+    expect(screen.getByRole('dialog', { name: 'Discard changes?' })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Keep editing' }));
+    expect(screen.getByRole('form', { name: 'Edit Alpha' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Title')).toHaveValue('Alpha!');
+    expect(screen.queryByRole('form', { name: 'New item' })).toBeNull();
+    expect(useUiStore.getState().editorDirty).toBe(true);
+  });
+
+  it('the toggle on a dirty editor asks and Discard closes without opening anything', async () => {
+    seed(mk('a', null, { title: 'Alpha' }));
+    render(<><Toolbar /><TodoTree /></>);
+    await pressTitle('Alpha');
+    await userEvent.click(screen.getByRole('button', { name: 'Edit Alpha' }));
+    await userEvent.type(screen.getByLabelText('Title'), '!');
+    await userEvent.click(screen.getByRole('button', { name: 'Edit Alpha' }));
+    expect(screen.getByRole('dialog', { name: 'Discard changes?' })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Discard' }));
+    expect(screen.queryByRole('form', { name: 'Edit Alpha' })).toBeNull();
+    expect(useUiStore.getState().openEditor).toBeNull();
+  });
+});

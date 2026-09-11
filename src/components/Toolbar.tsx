@@ -51,8 +51,7 @@ export function Toolbar() {
           initial={{ title: '', description: '', due_date: null, due_time: null, color: 'slate' }}
           heading="New item"
           submitLabel="Add item"
-          onSave={(v) => { addTodo(v, null); useUiStore.getState().closeEditor(); }}
-          onCancel={() => useUiStore.getState().requestClose()}
+          onSave={(v) => addTodo(v, null)}
         />
       ) : null}
     </header>
