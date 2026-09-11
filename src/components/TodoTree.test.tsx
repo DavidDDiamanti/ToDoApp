@@ -182,3 +182,29 @@ describe('TodoTree', () => {
     expect(row.children[2]).toHaveAttribute('aria-label', 'Show details for Alpha');
   });
 });
+
+describe('depth shading and the body wrapper', () => {
+  it('sets --depth from nesting', () => {
+    seed(mk('shop', null, { title: 'Shopping' }), mk('shoes', 'shop', { title: 'Shoe store' }));
+    render(<TodoTree />);
+    expect(screen.getByRole('treeitem', { name: /shopping/i }).style.getPropertyValue('--depth')).toBe('0');
+    expect(screen.getByRole('treeitem', { name: /shoe store/i }).style.getPropertyValue('--depth')).toBe('1');
+  });
+
+  it('the body wraps the row and details but not the children', async () => {
+    seed(mk('shop', null, { title: 'Shopping' }), mk('shoes', 'shop', { title: 'Shoe store' }));
+    render(<TodoTree />);
+    await pressTitle('Shopping');
+    await userEvent.click(screen.getByRole('button', { name: 'Edit Shopping' }));
+
+    const item = screen.getByRole('treeitem', { name: /shopping/i });
+    expect(Array.from(item.children).map((c) => c.className)).toEqual(['body', 'children']);
+
+    const body = item.children[0];
+    expect(body.querySelector('[data-todo-id]')).toHaveAttribute('data-todo-id', 'shop');
+    expect(body.querySelector('[data-editor-root]')).not.toBeNull();
+    expect(body.querySelector('.details')).not.toBeNull();
+    expect(body.querySelector('[role="group"]')).toBeNull();
+    expect(item.children[1]).toHaveAttribute('role', 'group');
+  });
+});

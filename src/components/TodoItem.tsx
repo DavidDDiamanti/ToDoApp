@@ -111,132 +111,134 @@ export function TodoItem({ todo, map, depth, tree }: Props) {
       data-dragging={isDragging ? 'true' : undefined}
       data-drop={dropZone ?? undefined}
       className={styles.item}
-      style={{ '--item-color': railColor } as CSSProperties}
+      style={{ '--item-color': railColor, '--depth': depth } as CSSProperties}
     >
-      <div className={styles.row} data-todo-id={todo.id}>
-        <button
-          type="button"
-          ref={handleRef}
-          className={styles.handle}
-          aria-label={`Move ${todo.title}`}
-          aria-describedby={tree.hintId}
-          onKeyDown={onHandleKeyDown}
-          onPointerDown={(e) => tree.onHandlePointerDown(todo.id, e)}
-        >
-          <GripIcon />
-        </button>
-        <input
-          type="checkbox"
-          className={styles.checkbox}
-          checked={todo.completed}
-          aria-label={`Mark ${todo.title} ${todo.completed ? 'incomplete' : 'complete'}`}
-          onChange={() => toggleTodo(todo.id)}
-        />
-
-        <button
-          type="button"
-          className={styles.titleButton}
-          aria-label={`${showDetails ? 'Hide' : 'Show'} details for ${todo.title}`}
-          aria-expanded={showDetails}
-          onClick={() => {
-            setShowDetails((v) => !v);
-            useUiStore.getState().setActive(todo.id);
-          }}
-        >
-          <span className={styles.title}>{todo.title}</span>
-          {todo.due_date !== null ? (
-            <time
-              dateTime={todo.due_time !== null ? `${todo.due_date}T${todo.due_time}` : todo.due_date}
-              className={`${styles.due} ${overdue ? styles.overdue : ''}`}
-            >
-              {formatDue(todo.due_date, todo.due_time)}
-            </time>
-          ) : null}
-        </button>
-
-        {hasChildren ? (
+      <div className={styles.body}>
+        <div className={styles.row} data-todo-id={todo.id}>
           <button
             type="button"
-            className={`${styles.iconButton} ${collapsed ? '' : styles.open}`}
-            aria-label={`${collapsed ? 'Expand' : 'Collapse'} ${todo.title}`}
-            onClick={() => toggleCollapsed(todo.id)}
+            ref={handleRef}
+            className={styles.handle}
+            aria-label={`Move ${todo.title}`}
+            aria-describedby={tree.hintId}
+            onKeyDown={onHandleKeyDown}
+            onPointerDown={(e) => tree.onHandlePointerDown(todo.id, e)}
           >
-            <ChevronIcon />
+            <GripIcon />
           </button>
+          <input
+            type="checkbox"
+            className={styles.checkbox}
+            checked={todo.completed}
+            aria-label={`Mark ${todo.title} ${todo.completed ? 'incomplete' : 'complete'}`}
+            onChange={() => toggleTodo(todo.id)}
+          />
+
+          <button
+            type="button"
+            className={styles.titleButton}
+            aria-label={`${showDetails ? 'Hide' : 'Show'} details for ${todo.title}`}
+            aria-expanded={showDetails}
+            onClick={() => {
+              setShowDetails((v) => !v);
+              useUiStore.getState().setActive(todo.id);
+            }}
+          >
+            <span className={styles.title}>{todo.title}</span>
+            {todo.due_date !== null ? (
+              <time
+                dateTime={todo.due_time !== null ? `${todo.due_date}T${todo.due_time}` : todo.due_date}
+                className={`${styles.due} ${overdue ? styles.overdue : ''}`}
+              >
+                {formatDue(todo.due_date, todo.due_time)}
+              </time>
+            ) : null}
+          </button>
+
+          {hasChildren ? (
+            <button
+              type="button"
+              className={`${styles.iconButton} ${collapsed ? '' : styles.open}`}
+              aria-label={`${collapsed ? 'Expand' : 'Collapse'} ${todo.title}`}
+              onClick={() => toggleCollapsed(todo.id)}
+            >
+              <ChevronIcon />
+            </button>
+          ) : null}
+
+          {isActive ? (
+            <div className={styles.actions}>
+              <button
+                type="button"
+                className={styles.iconButton}
+                aria-label={`Edit ${todo.title}`}
+                data-editor-toggle
+                aria-expanded={editorKind === 'edit'}
+                onClick={() => useUiStore.getState().requestOpen({ kind: 'edit', id: todo.id })}
+              >
+                <PencilIcon />
+              </button>
+              <button
+                type="button"
+                className={styles.iconButton}
+                aria-label={`Add item under ${todo.title}`}
+                data-editor-toggle
+                aria-expanded={editorKind === 'add'}
+                onClick={() => {
+                  useUiStore.getState().requestOpen({ kind: 'add', id: todo.id });
+                  if (collapsed) toggleCollapsed(todo.id);
+                }}
+              >
+                <PlusIcon />
+              </button>
+              <button
+                type="button"
+                className={styles.iconButton}
+                aria-label={`Delete ${todo.title}`}
+                onClick={() => {
+                  // A discard prompt is already up; do not stack a delete dialog on top of it.
+                  if (useUiStore.getState().pendingClose !== null) return;
+                  setConfirmingDelete(true);
+                }}
+              >
+                <TrashIcon />
+              </button>
+            </div>
+          ) : null}
+        </div>
+
+        {editorKind === 'edit' ? (
+          <TodoEditor
+            initial={{ title: todo.title, description: todo.description, due_date: todo.due_date, due_time: todo.due_time, color: todo.color }}
+            heading={`Edit ${todo.title}`}
+            submitLabel="Save changes"
+            onSave={(v) => editTodo(todo.id, v)}
+          />
+        ) : null}
+        {editorKind === 'add' ? (
+          <TodoEditor
+            initial={{ title: '', description: '', due_date: null, due_time: null, color: todo.color }}
+            heading={`New item under ${todo.title}`}
+            submitLabel="Add item"
+            onSave={(v) => addTodo(v, todo.id)}
+          />
+        ) : null}
+        {confirmingDelete ? (
+          <DeleteDialog
+            title={todo.title}
+            hasChildren={hasChildren}
+            onDeleteAll={() => { removeTodo(todo.id, 'subtree'); setConfirmingDelete(false); }}
+            onPromote={() => { removeTodo(todo.id, 'promote'); setConfirmingDelete(false); }}
+            onCancel={() => setConfirmingDelete(false)}
+          />
         ) : null}
 
-        {isActive ? (
-          <div className={styles.actions}>
-            <button
-              type="button"
-              className={styles.iconButton}
-              aria-label={`Edit ${todo.title}`}
-              data-editor-toggle
-              aria-expanded={editorKind === 'edit'}
-              onClick={() => useUiStore.getState().requestOpen({ kind: 'edit', id: todo.id })}
-            >
-              <PencilIcon />
-            </button>
-            <button
-              type="button"
-              className={styles.iconButton}
-              aria-label={`Add item under ${todo.title}`}
-              data-editor-toggle
-              aria-expanded={editorKind === 'add'}
-              onClick={() => {
-                useUiStore.getState().requestOpen({ kind: 'add', id: todo.id });
-                if (collapsed) toggleCollapsed(todo.id);
-              }}
-            >
-              <PlusIcon />
-            </button>
-            <button
-              type="button"
-              className={styles.iconButton}
-              aria-label={`Delete ${todo.title}`}
-              onClick={() => {
-                // A discard prompt is already up; do not stack a delete dialog on top of it.
-                if (useUiStore.getState().pendingClose !== null) return;
-                setConfirmingDelete(true);
-              }}
-            >
-              <TrashIcon />
-            </button>
+        {showDetails ? (
+          <div className={styles.details}>
+            {todo.description.length > 0 ? <p className={styles.description}>{todo.description}</p> : <p className={styles.noDescription}>No description yet.</p>}
           </div>
         ) : null}
       </div>
-
-      {editorKind === 'edit' ? (
-        <TodoEditor
-          initial={{ title: todo.title, description: todo.description, due_date: todo.due_date, due_time: todo.due_time, color: todo.color }}
-          heading={`Edit ${todo.title}`}
-          submitLabel="Save changes"
-          onSave={(v) => editTodo(todo.id, v)}
-        />
-      ) : null}
-      {editorKind === 'add' ? (
-        <TodoEditor
-          initial={{ title: '', description: '', due_date: null, due_time: null, color: todo.color }}
-          heading={`New item under ${todo.title}`}
-          submitLabel="Add item"
-          onSave={(v) => addTodo(v, todo.id)}
-        />
-      ) : null}
-      {confirmingDelete ? (
-        <DeleteDialog
-          title={todo.title}
-          hasChildren={hasChildren}
-          onDeleteAll={() => { removeTodo(todo.id, 'subtree'); setConfirmingDelete(false); }}
-          onPromote={() => { removeTodo(todo.id, 'promote'); setConfirmingDelete(false); }}
-          onCancel={() => setConfirmingDelete(false)}
-        />
-      ) : null}
-
-      {showDetails ? (
-        <div className={styles.details}>
-          {todo.description.length > 0 ? <p className={styles.description}>{todo.description}</p> : <p className={styles.noDescription}>No description yet.</p>}
-        </div>
-      ) : null}
 
       {hasChildren && !collapsed && children.length > 0 ? (
         <ul role="group" className={styles.children}>
