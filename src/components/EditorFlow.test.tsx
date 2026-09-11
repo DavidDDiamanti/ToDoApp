@@ -5,8 +5,19 @@ import { Toolbar } from './Toolbar';
 import { TodoTree } from './TodoTree';
 import { useTodoStore } from '../store/todoStore';
 import { useUiStore } from '../store/uiStore';
+import { useClickOutsideEditor } from '../hooks/useClickOutsideEditor';
 import { mk } from '../test/fixtures';
 import { pressTitle } from '../test/press';
+
+/** The hook lives in Shell, which this harness does not render; mount it explicitly instead. */
+function OutsidePress() {
+  useClickOutsideEditor();
+  return null;
+}
+
+function renderApp() {
+  return render(<><OutsidePress /><Toolbar /><TodoTree /></>);
+}
 
 function seed(...todos: ReturnType<typeof mk>[]) {
   const s = useTodoStore.getState();
@@ -22,7 +33,7 @@ beforeEach(() => {
 describe('editor flow', () => {
   it('opening Edit twice closes it', async () => {
     seed(mk('a', null, { title: 'Alpha' }));
-    render(<><Toolbar /><TodoTree /></>);
+    renderApp();
     await pressTitle('Alpha');
     await userEvent.click(screen.getByRole('button', { name: 'Edit Alpha' }));
     expect(screen.getByRole('form', { name: 'Edit Alpha' })).toBeInTheDocument();
@@ -32,7 +43,7 @@ describe('editor flow', () => {
 
   it('opening Add under twice closes it', async () => {
     seed(mk('a', null, { title: 'Alpha' }));
-    render(<><Toolbar /><TodoTree /></>);
+    renderApp();
     await pressTitle('Alpha');
     await userEvent.click(screen.getByRole('button', { name: 'Add item under Alpha' }));
     expect(screen.getByRole('form', { name: 'New item under Alpha' })).toBeInTheDocument();
@@ -42,7 +53,7 @@ describe('editor flow', () => {
 
   it('opening Edit while New item is open closes New item and opens Edit', async () => {
     seed(mk('a', null, { title: 'Alpha' }));
-    render(<><Toolbar /><TodoTree /></>);
+    renderApp();
     await userEvent.click(screen.getByRole('button', { name: 'New item' }));
     expect(screen.getByRole('form', { name: 'New item' })).toBeInTheDocument();
     await pressTitle('Alpha');
@@ -53,7 +64,7 @@ describe('editor flow', () => {
 
   it('Edit Alpha then Add under Alpha swaps the open editor', async () => {
     seed(mk('a', null, { title: 'Alpha' }));
-    render(<><Toolbar /><TodoTree /></>);
+    renderApp();
     await pressTitle('Alpha');
     await userEvent.click(screen.getByRole('button', { name: 'Edit Alpha' }));
     expect(screen.getByRole('form', { name: 'Edit Alpha' })).toBeInTheDocument();
@@ -64,7 +75,7 @@ describe('editor flow', () => {
 
   it('collapsing the parent of an item with an open editor clears openEditor', async () => {
     seed(mk('a', null, { title: 'Alpha' }), mk('b', 'a', { title: 'Beta' }));
-    render(<><Toolbar /><TodoTree /></>);
+    renderApp();
     await pressTitle('Beta');
     await userEvent.click(screen.getByRole('button', { name: 'Edit Beta' }));
     expect(screen.getByRole('form', { name: 'Edit Beta' })).toBeInTheDocument();
@@ -76,7 +87,7 @@ describe('editor flow', () => {
 describe('discard prompt across editors', () => {
   it('displacing a dirty editor asks first and Discard opens the requested one', async () => {
     seed(mk('a', null, { title: 'Alpha' }));
-    render(<><Toolbar /><TodoTree /></>);
+    renderApp();
     await pressTitle('Alpha');
     await userEvent.click(screen.getByRole('button', { name: 'Edit Alpha' }));
     await userEvent.type(screen.getByLabelText('Title'), '!');
@@ -92,7 +103,7 @@ describe('discard prompt across editors', () => {
 
   it('Keep editing leaves the first editor open with its draft', async () => {
     seed(mk('a', null, { title: 'Alpha' }));
-    render(<><Toolbar /><TodoTree /></>);
+    renderApp();
     await pressTitle('Alpha');
     await userEvent.click(screen.getByRole('button', { name: 'Edit Alpha' }));
     await userEvent.type(screen.getByLabelText('Title'), '!');
@@ -107,7 +118,7 @@ describe('discard prompt across editors', () => {
 
   it('the toggle on a dirty editor asks and Discard closes without opening anything', async () => {
     seed(mk('a', null, { title: 'Alpha' }));
-    render(<><Toolbar /><TodoTree /></>);
+    renderApp();
     await pressTitle('Alpha');
     await userEvent.click(screen.getByRole('button', { name: 'Edit Alpha' }));
     await userEvent.type(screen.getByLabelText('Title'), '!');
@@ -122,7 +133,7 @@ describe('discard prompt across editors', () => {
 describe('pressing outside the editor', () => {
   it('pointerdown outside a clean editor closes it', async () => {
     seed(mk('a', null, { title: 'Alpha' }), mk('b', 'a', { title: 'Beta' }));
-    render(<><Toolbar /><TodoTree /></>);
+    renderApp();
     await pressTitle('Alpha');
     await userEvent.click(screen.getByRole('button', { name: 'Edit Alpha' }));
     expect(screen.getByRole('form', { name: 'Edit Alpha' })).toBeInTheDocument();
@@ -135,7 +146,7 @@ describe('pressing outside the editor', () => {
 
   it('outside a dirty editor asks and the following click on the backdrop does not dismiss', async () => {
     seed(mk('a', null, { title: 'Alpha' }), mk('b', 'a', { title: 'Beta' }));
-    render(<><Toolbar /><TodoTree /></>);
+    renderApp();
     await pressTitle('Alpha');
     await userEvent.click(screen.getByRole('button', { name: 'Edit Alpha' }));
     await userEvent.type(screen.getByLabelText('Title'), '!');
@@ -154,7 +165,7 @@ describe('pressing outside the editor', () => {
 
   it('pointerdown inside the form does nothing', async () => {
     seed(mk('a', null, { title: 'Alpha' }));
-    render(<><Toolbar /><TodoTree /></>);
+    renderApp();
     await pressTitle('Alpha');
     await userEvent.click(screen.getByRole('button', { name: 'Edit Alpha' }));
     await userEvent.type(screen.getByLabelText('Title'), '!');
@@ -168,7 +179,7 @@ describe('pressing outside the editor', () => {
 
   it('pointerdown on the editor own toggle does nothing', async () => {
     seed(mk('a', null, { title: 'Alpha' }));
-    render(<><Toolbar /><TodoTree /></>);
+    renderApp();
     await pressTitle('Alpha');
     await userEvent.click(screen.getByRole('button', { name: 'Edit Alpha' }));
     await userEvent.type(screen.getByLabelText('Title'), '!');
@@ -182,7 +193,7 @@ describe('pressing outside the editor', () => {
 
   it('pointerdown inside an open dialog does nothing', async () => {
     seed(mk('a', null, { title: 'Alpha' }));
-    render(<><Toolbar /><TodoTree /></>);
+    renderApp();
     await pressTitle('Alpha');
     await userEvent.click(screen.getByRole('button', { name: 'Edit Alpha' }));
     await userEvent.type(screen.getByLabelText('Title'), '!');
@@ -200,7 +211,7 @@ describe('pressing outside the editor', () => {
 describe('Delete while a prompt is up', () => {
   it('does not open a delete dialog on top of the discard prompt', async () => {
     seed(mk('a', null, { title: 'Alpha' }), mk('b', null, { title: 'Beta' }));
-    render(<><Toolbar /><TodoTree /></>);
+    renderApp();
     await pressTitle('Alpha');
     await userEvent.click(screen.getByRole('button', { name: 'Edit Alpha' }));
     await userEvent.type(screen.getByLabelText('Title'), '!');
@@ -215,5 +226,41 @@ describe('Delete while a prompt is up', () => {
     expect(screen.getAllByRole('dialog')).toHaveLength(1);
     expect(screen.getByRole('dialog', { name: /discard changes/i })).toBeInTheDocument();
     expect(screen.queryByRole('dialog', { name: /delete/i })).toBeNull();
+  });
+});
+
+describe('pressing a dialog backdrop', () => {
+  it('leaves the discard prompt standing and does not re-request a close', async () => {
+    seed(mk('a', null, { title: 'Alpha' }));
+    renderApp();
+    await userEvent.click(screen.getByRole('button', { name: 'New item' }));
+    await userEvent.type(screen.getByLabelText('Title'), 'x');
+
+    await pressTitle('Alpha');
+    const prompt = screen.getByRole('dialog', { name: 'Discard changes?' });
+    const pending = useUiStore.getState().pendingClose;
+
+    fireEvent.pointerDown(prompt.parentElement as HTMLElement);
+
+    expect(screen.getAllByRole('dialog')).toHaveLength(1);
+    expect(useUiStore.getState().pendingClose).toBe(pending);
+  });
+
+  it('does not close the editor behind an open delete dialog', async () => {
+    seed(mk('a', null, { title: 'Alpha' }));
+    renderApp();
+    await pressTitle('Alpha');
+    await userEvent.click(screen.getByRole('button', { name: 'Delete Alpha' }));
+    expect(screen.getByRole('dialog', { name: "Delete 'Alpha'?" })).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Add item under Alpha' }));
+    const editor = screen.getByRole('form', { name: 'New item under Alpha' });
+    expect(editor).toBeInTheDocument();
+
+    const dialog = screen.getByRole('dialog', { name: "Delete 'Alpha'?" });
+    fireEvent.pointerDown(dialog.parentElement as HTMLElement);
+
+    expect(screen.getByRole('form', { name: 'New item under Alpha' })).toBeInTheDocument();
+    expect(useUiStore.getState().openEditor).not.toBeNull();
   });
 });

@@ -228,7 +228,9 @@ Requested after the first merge, before deployment. Decisions were taken with th
 - Pressing the button that opened an editor again closes it. Pressing a different editor button while one is open is a close request for the first; if the close proceeds, the requested editor opens.
 - A close request (toggle button, Cancel, Escape, a pointer press outside the editor, or displacement by another editor) closes directly when nothing changed. When the title, description, due date, due time or colour differ from the initial values (title and description compared trimmed), a "Discard changes?" dialog offers Discard and Keep editing. Saving never asks.
 - State machine (O open editor, D dirty, P prompt): requestOpen(k) with O empty opens k; same key and clean closes; same key and dirty prompts with no next; other key and clean displaces; other key and dirty prompts with next = k; requestClose closes when clean, prompts when dirty; confirmDiscard opens the remembered next (or none) and clears dirtiness; keepEditing clears the prompt; requests while a prompt is up are ignored.
-- The outside-press listener is one `document` `pointerdown` listener in `src/hooks/useClickOutsideEditor.ts`, mounted once; it ignores targets inside the editor form, its own toggle button and any open dialog.
+- The outside-press listener is one `document` `pointerdown` listener in `src/hooks/useClickOutsideEditor.ts`, mounted once in `Shell` (not `TodoTree`) so it is live before the store finishes hydrating; it ignores targets inside the editor form, its own toggle button and any open dialog.
+- While any dialog is open the press is ignored outright, whatever the target: the dialog backdrop sits outside the editor, so without that guard pressing it would close the editor behind the dialog or stack a second prompt.
+- Known limitation: on touch screens the outside press fires at touch start, so beginning a scroll outside an open editor closes it (or asks, if changed).
 
 ### 13.2 Active item and actions
 

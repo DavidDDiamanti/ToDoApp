@@ -5,7 +5,6 @@ import { describePlacement, type Placement } from '../domain/place';
 import { useDragStore } from '../dnd/dragStore';
 import type { RectReader } from '../dnd/hitTest';
 import { useDragReorder } from '../dnd/useDragReorder';
-import { useClickOutsideEditor } from '../hooks/useClickOutsideEditor';
 import { useNow } from '../hooks/useNow';
 import { moveTodoTo } from '../store/actions';
 import { useTodoStore } from '../store/todoStore';
@@ -39,7 +38,6 @@ export function TodoTree({ getRect }: Props) {
   const roots = visibleChildren(map, null, hideCompleted);
   const hintId = useId();
   const now = useNow();
-  useClickOutsideEditor();
 
   const rootRef = useRef<HTMLUListElement>(null);
   const mapRef = useRef(map);

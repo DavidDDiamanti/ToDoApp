@@ -115,7 +115,7 @@
 .iconButton.open svg { transform: rotate(90deg); }
 
 .details {
-  padding: 0 var(--space-3) var(--space-3) calc(var(--touch) + 22px + var(--space-4));
+  padding: var(--space-2) var(--space-3) var(--space-3) calc(var(--touch) + 22px + var(--space-4));
   background: color-mix(in srgb, var(--ink) calc(var(--depth-mix) + 2%), var(--surface));
   border-top: 1px solid color-mix(in srgb, var(--ink) calc(var(--depth-mix) + 16%), var(--surface));
   border-radius: 0 0 calc(var(--radius) - 1px) calc(var(--radius) - 1px);
