@@ -10,7 +10,7 @@ Each item has a title, description, one of eight colours, and an optional due da
 
 1. Run `npm install`.
 2. Copy `.env.example` to `.env.local` and fill in `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` from a Supabase project.
-3. In the SQL editor, run `supabase/migrations/0001_todos.sql`, then `supabase/migrations/0002_due_time.sql`. Run 0002 first: the client writes every column, so saves fail without it.
+3. In the SQL editor, run `supabase/migrations/0001_todos.sql`, then `supabase/migrations/0002_due_time.sql`. Run 0002 before starting the app, since the client writes every column.
 4. Enable the Email auth provider, add `http://localhost:5173/**` as the redirect URL and Site URL, and add `{{ .Token }}` to the Magic Link template for the six digit sign-in code.
 5. Run `npm run dev` and open `http://localhost:5173`.
 
