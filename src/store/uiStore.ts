@@ -10,6 +10,7 @@ export interface UiState {
   setActive(id: string | null): void;
   requestOpen(key: EditorKey): void;
   requestClose(): void;
+  resolvePending(): void;
   confirmDiscard(): void;
   keepEditing(): void;
   setDirty(dirty: boolean): void;
@@ -59,11 +60,13 @@ export function createUiStore(): UseBoundStore<StoreApi<UiState>> {
       if (editorDirty) set({ pendingClose: { next: null } });
       else set({ openEditor: null });
     },
-    confirmDiscard: () => {
+    /** Settles the prompt: the requested editor takes over, whether the draft was saved or thrown away. */
+    resolvePending: () => {
       const { pendingClose } = get();
       if (pendingClose === null) return;
       set({ openEditor: pendingClose.next, editorDirty: false, pendingClose: null });
     },
+    confirmDiscard: () => get().resolvePending(),
     keepEditing: () => set({ pendingClose: null }),
     setDirty: (dirty) => {
       const { openEditor, editorDirty } = get();

@@ -222,7 +222,7 @@ describe('ConfirmDialog focus restore guards', () => {
 
     const { unmount } = render(
       <ConfirmDialog
-        heading="Discard changes?"
+        heading="Unsaved changes"
         body="Your unsaved edits will be lost."
         primary={{ label: 'Discard', tone: 'danger', onClick: vi.fn() }}
         secondary={{ label: 'Keep editing', onClick: () => elsewhere.focus() }}

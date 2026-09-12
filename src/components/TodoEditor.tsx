@@ -60,18 +60,23 @@ export function TodoEditor({ initial, heading, submitLabel, onSave, now = defaul
     useUiStore.getState().setDirty(dirty);
   }, [dirty]);
 
-  function submit(e?: FormEvent) {
-    e?.preventDefault();
+  /** Saves the draft; returns false without saving when the title is empty (error shown, title focused). */
+  function trySave(): boolean {
     const trimmed = title.trim();
     if (trimmed.length === 0) {
       setError('Title is required');
       titleRef.current?.focus();
-      return;
+      return false;
     }
     const due_time = normalizeTime(dueTime);
     const due_date = resolveDueDate(dueDate.length > 0 ? dueDate : null, due_time, now());
     onSave({ title: trimmed, description: description.trim(), due_date, due_time, color });
-    useUiStore.getState().closeEditor();
+    return true;
+  }
+
+  function submit(e?: FormEvent) {
+    e?.preventDefault();
+    if (trySave()) useUiStore.getState().closeEditor();
   }
 
   function onKeyDown(e: KeyboardEvent<HTMLElement>) {
@@ -122,9 +127,19 @@ export function TodoEditor({ initial, heading, submitLabel, onSave, now = defaul
       </form>
       {asking ? (
         <ConfirmDialog
-          heading="Discard changes?"
-          body="Your unsaved edits will be lost."
-          primary={{ label: 'Discard', tone: 'danger', onClick: () => useUiStore.getState().confirmDiscard() }}
+          heading="Unsaved changes"
+          body="Save them, or discard them?"
+          primary={{
+            label: submitLabel,
+            tone: 'primary',
+            onClick: () => {
+              const ui = useUiStore.getState();
+              // A failed save leaves the title focused; keepEditing only takes the prompt away.
+              if (trySave()) ui.resolvePending();
+              else ui.keepEditing();
+            },
+          }}
+          extra={{ label: 'Discard', onClick: () => useUiStore.getState().confirmDiscard() }}
           secondary={{
             label: 'Keep editing',
             onClick: () => {

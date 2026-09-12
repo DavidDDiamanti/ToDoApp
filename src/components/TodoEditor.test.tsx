@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { isDirty, TodoEditor } from './TodoEditor';
@@ -195,7 +195,7 @@ describe('discarding editor changes', () => {
   it('Escape after typing asks before discarding', async () => {
     renderEditor();
     await userEvent.type(screen.getByLabelText('Title'), ' shake{Escape}');
-    expect(screen.getByRole('dialog', { name: 'Discard changes?' })).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: 'Unsaved changes' })).toBeInTheDocument();
     expect(useUiStore.getState().openEditor).toEqual({ kind: 'root' });
   });
 
@@ -212,7 +212,7 @@ describe('discarding editor changes', () => {
   it('a second Escape in the prompt keeps editing without asking again', async () => {
     renderEditor();
     await userEvent.type(screen.getByLabelText('Title'), ' shake{Escape}');
-    expect(screen.getByRole('dialog', { name: 'Discard changes?' })).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: 'Unsaved changes' })).toBeInTheDocument();
     await userEvent.keyboard('{Escape}');
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(useUiStore.getState().pendingClose).toBeNull();
@@ -233,7 +233,7 @@ describe('discarding editor changes', () => {
     renderEditor();
     await userEvent.type(screen.getByLabelText('Title'), ' shake');
     await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
-    expect(screen.getByRole('dialog', { name: 'Discard changes?' })).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: 'Unsaved changes' })).toBeInTheDocument();
     expect(useUiStore.getState().openEditor).toEqual({ kind: 'root' });
   });
 
@@ -260,5 +260,49 @@ describe('discarding editor changes', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     await userEvent.click(screen.getByRole('button', { name: 'Keep editing' }));
     expect(screen.getByLabelText('Title')).toHaveFocus();
+  });
+});
+
+describe('saving from the unsaved-changes prompt', () => {
+  function renderEditor() {
+    const onSave = vi.fn();
+    render(<TodoEditor initial={initial} heading="Edit item" submitLabel="Save changes" onSave={onSave} />);
+    return onSave;
+  }
+
+  function prompt() {
+    return screen.getByRole('dialog', { name: 'Unsaved changes' });
+  }
+
+  it('offers the submit label, Discard and Keep editing in that order', async () => {
+    renderEditor();
+    await userEvent.type(screen.getByLabelText('Title'), ' shake{Escape}');
+    const buttons = within(prompt()).getAllByRole('button');
+    expect(buttons.map((b) => b.textContent)).toEqual(['Save changes', 'Discard', 'Keep editing']);
+    expect(buttons[0]).toHaveFocus();
+  });
+
+  it('the submit-labelled button saves the trimmed draft and closes the editor', async () => {
+    const onSave = renderEditor();
+    await userEvent.type(screen.getByLabelText('Title'), ' shake  {Escape}');
+    await userEvent.click(within(prompt()).getByRole('button', { name: 'Save changes' }));
+    expect(onSave).toHaveBeenCalledWith({ title: 'Milk shake', description: '', due_date: null, due_time: null, color: 'slate' });
+    expect(useUiStore.getState().openEditor).toBeNull();
+    expect(useUiStore.getState().pendingClose).toBeNull();
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('an empty title keeps the editor open with the error and focus on the title', async () => {
+    const onSave = renderEditor();
+    await userEvent.clear(screen.getByLabelText('Title'));
+    await userEvent.keyboard('{Escape}');
+    await userEvent.click(within(prompt()).getByRole('button', { name: 'Save changes' }));
+    expect(onSave).not.toHaveBeenCalled();
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.getByRole('form', { name: 'Edit item' })).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent('Title is required');
+    expect(screen.getByLabelText('Title')).toHaveFocus();
+    expect(useUiStore.getState().openEditor).toEqual({ kind: 'root' });
+    expect(useUiStore.getState().pendingClose).toBeNull();
   });
 });

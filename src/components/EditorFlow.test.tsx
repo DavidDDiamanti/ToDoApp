@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { MockInstance } from 'vitest';
@@ -124,7 +124,7 @@ describe('discard prompt across editors', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Edit Alpha' }));
     await userEvent.type(screen.getByLabelText('Title'), '!');
     await userEvent.click(screen.getByRole('button', { name: 'Add item under Alpha' }));
-    expect(screen.getByRole('dialog', { name: 'Discard changes?' })).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: 'Unsaved changes' })).toBeInTheDocument();
     expect(screen.getByRole('form', { name: 'Edit Alpha' })).toBeInTheDocument();
     expect(screen.queryByRole('form', { name: 'New item under Alpha' })).toBeNull();
     await userEvent.click(screen.getByRole('button', { name: 'Discard' }));
@@ -140,7 +140,7 @@ describe('discard prompt across editors', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Edit Alpha' }));
     await userEvent.type(screen.getByLabelText('Title'), '!');
     await userEvent.click(screen.getByRole('button', { name: 'New item' }));
-    expect(screen.getByRole('dialog', { name: 'Discard changes?' })).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: 'Unsaved changes' })).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Keep editing' }));
     expect(screen.getByRole('form', { name: 'Edit Alpha' })).toBeInTheDocument();
     expect(screen.getByLabelText('Title')).toHaveValue('Alpha!');
@@ -155,7 +155,7 @@ describe('discard prompt across editors', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Edit Alpha' }));
     await userEvent.type(screen.getByLabelText('Title'), '!');
     await userEvent.click(screen.getByRole('button', { name: 'Edit Alpha' }));
-    expect(screen.getByRole('dialog', { name: 'Discard changes?' })).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: 'Unsaved changes' })).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Discard' }));
     expect(screen.queryByRole('form', { name: 'Edit Alpha' })).toBeNull();
     expect(useUiStore.getState().openEditor).toBeNull();
@@ -185,12 +185,12 @@ describe('pressing outside the editor', () => {
 
     fireEvent.pointerDown(screen.getByRole('heading', { name: 'Todo' }));
 
-    const dialog = screen.getByRole('dialog', { name: 'Discard changes?' });
+    const dialog = screen.getByRole('dialog', { name: 'Unsaved changes' });
     expect(screen.getByRole('form', { name: 'Edit Alpha' })).toBeInTheDocument();
     const backdrop = dialog.parentElement as HTMLElement;
     fireEvent.click(backdrop);
 
-    expect(screen.getByRole('dialog', { name: 'Discard changes?' })).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: 'Unsaved changes' })).toBeInTheDocument();
     expect(screen.getByRole('form', { name: 'Edit Alpha' })).toBeInTheDocument();
     expect(useUiStore.getState().editorDirty).toBe(true);
   });
@@ -205,7 +205,7 @@ describe('pressing outside the editor', () => {
     fireEvent.pointerDown(screen.getByLabelText('Title'));
 
     expect(screen.getByRole('form', { name: 'Edit Alpha' })).toBeInTheDocument();
-    expect(screen.queryByRole('dialog', { name: 'Discard changes?' })).toBeNull();
+    expect(screen.queryByRole('dialog', { name: 'Unsaved changes' })).toBeNull();
     expect(useUiStore.getState().editorDirty).toBe(true);
   });
 
@@ -219,7 +219,7 @@ describe('pressing outside the editor', () => {
     fireEvent.pointerDown(screen.getByRole('button', { name: 'Edit Alpha' }));
 
     expect(screen.getByRole('form', { name: 'Edit Alpha' })).toBeInTheDocument();
-    expect(screen.queryByRole('dialog', { name: 'Discard changes?' })).toBeNull();
+    expect(screen.queryByRole('dialog', { name: 'Unsaved changes' })).toBeNull();
     expect(useUiStore.getState().pendingClose).toBeNull();
   });
 
@@ -245,7 +245,7 @@ describe('pressing outside the editor', () => {
 
     fireEvent.pointerDown(screen.getByRole('button', { name: 'Move Beta' }));
 
-    expect(screen.queryByRole('dialog', { name: 'Discard changes?' })).toBeNull();
+    expect(screen.queryByRole('dialog', { name: 'Unsaved changes' })).toBeNull();
     expect(screen.getByRole('form', { name: 'Edit Alpha' })).toBeInTheDocument();
     expect(useUiStore.getState().pendingClose).toBeNull();
   });
@@ -259,7 +259,7 @@ describe('pressing outside the editor', () => {
 
     fireEvent.pointerDown(screen.getByRole('button', { name: 'Move Alpha' }));
 
-    expect(screen.queryByRole('dialog', { name: 'Discard changes?' })).toBeNull();
+    expect(screen.queryByRole('dialog', { name: 'Unsaved changes' })).toBeNull();
     expect(screen.getByRole('form', { name: 'Edit Alpha' })).toBeInTheDocument();
     expect(useUiStore.getState().pendingClose).toBeNull();
   });
@@ -271,11 +271,11 @@ describe('pressing outside the editor', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Edit Alpha' }));
     await userEvent.type(screen.getByLabelText('Title'), '!');
     await userEvent.click(screen.getByRole('button', { name: 'New item' }));
-    expect(screen.getByRole('dialog', { name: 'Discard changes?' })).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: 'Unsaved changes' })).toBeInTheDocument();
 
     fireEvent.pointerDown(screen.getByRole('button', { name: 'Keep editing' }));
 
-    expect(screen.getByRole('dialog', { name: 'Discard changes?' })).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: 'Unsaved changes' })).toBeInTheDocument();
     expect(screen.getByRole('form', { name: 'Edit Alpha' })).toBeInTheDocument();
     expect(useUiStore.getState().pendingClose).not.toBeNull();
   });
@@ -374,14 +374,14 @@ describe('Delete while a prompt is up', () => {
 
     await pressTitle('Beta');
     await userEvent.click(screen.getByRole('button', { name: 'Edit Beta' }));
-    expect(screen.getByRole('dialog', { name: 'Discard changes?' })).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: 'Unsaved changes' })).toBeInTheDocument();
 
     const del = screen.getByRole('button', { name: 'Delete Beta' });
     fireEvent.pointerDown(del);
     fireEvent.click(del);
 
     expect(screen.getAllByRole('dialog')).toHaveLength(1);
-    expect(screen.getByRole('dialog', { name: /discard changes/i })).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: /unsaved changes/i })).toBeInTheDocument();
     expect(screen.queryByRole('dialog', { name: /delete/i })).toBeNull();
   });
 });
@@ -395,7 +395,7 @@ describe('pressing a dialog backdrop', () => {
 
     await pressTitle('Alpha');
     await userEvent.click(screen.getByRole('button', { name: 'Edit Alpha' }));
-    const prompt = screen.getByRole('dialog', { name: 'Discard changes?' });
+    const prompt = screen.getByRole('dialog', { name: 'Unsaved changes' });
     const pending = useUiStore.getState().pendingClose;
 
     fireEvent.pointerDown(prompt.parentElement as HTMLElement);
@@ -435,13 +435,13 @@ describe('Add item under a collapsed item', () => {
 
     await pressTitle('Alpha');
     await userEvent.click(screen.getByRole('button', { name: 'Add item under Alpha' }));
-    expect(screen.getByRole('dialog', { name: 'Discard changes?' })).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: 'Unsaved changes' })).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('button', { name: 'Add item under Alpha' }));
 
     expect(useTodoStore.getState().collapsed.a).toBe(true);
     expect(screen.queryByRole('form', { name: 'New item under Alpha' })).toBeNull();
-    expect(screen.getByRole('dialog', { name: 'Discard changes?' })).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: 'Unsaved changes' })).toBeInTheDocument();
   });
 });
 
@@ -455,7 +455,7 @@ describe('dragging around an open editor', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Edit Alpha' }));
     await userEvent.type(screen.getByLabelText('Title'), '!');
     await userEvent.click(screen.getByRole('button', { name: 'New item' }));
-    expect(screen.getByRole('dialog', { name: 'Discard changes?' })).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: 'Unsaved changes' })).toBeInTheDocument();
 
     fireEvent.pointerDown(titleOf('Beta'), MOUSE_DOWN);
     mouseMove(20);
@@ -608,5 +608,63 @@ describe('Enter opens an editor', () => {
         useDragStore.getState().end();
       });
     }
+  });
+});
+
+describe('saving from the unsaved-changes prompt', () => {
+  it('adds the new item and closes after an outside press', async () => {
+    seed(mk('a', null, { title: 'Alpha' }));
+    renderApp();
+    await userEvent.click(screen.getByRole('button', { name: 'New item' }));
+    await userEvent.type(screen.getByLabelText('Title'), 'Gamma');
+
+    fireEvent.pointerDown(screen.getByRole('heading', { name: 'Todo' }));
+
+    const dialog = screen.getByRole('dialog', { name: 'Unsaved changes' });
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Add item' }));
+
+    expect(Object.values(useTodoStore.getState().todos).some((t) => t.title === 'Gamma')).toBe(true);
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.queryByRole('form')).toBeNull();
+    expect(useUiStore.getState().openEditor).toBeNull();
+  });
+
+  it('saves the displaced editor and opens the requested one', async () => {
+    seed(mk('a', null, { title: 'Alpha' }), mk('b', null, { title: 'Beta' }));
+    renderApp();
+    await pressTitle('Alpha');
+    await userEvent.click(screen.getByRole('button', { name: 'Edit Alpha' }));
+    await userEvent.type(screen.getByLabelText('Title'), '!');
+
+    await pressTitle('Beta');
+    await userEvent.click(screen.getByRole('button', { name: 'Add item under Beta' }));
+    const dialog = screen.getByRole('dialog', { name: 'Unsaved changes' });
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Save changes' }));
+
+    expect(useTodoStore.getState().todos.a.title).toBe('Alpha!');
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.getByRole('form', { name: 'New item under Beta' })).toBeInTheDocument();
+    expect(useUiStore.getState().openEditor).toEqual({ kind: 'add', id: 'b' });
+    expect(useUiStore.getState().editorDirty).toBe(false);
+  });
+
+  it('an empty title in the displaced editor keeps it open with the error', async () => {
+    seed(mk('a', null, { title: 'Alpha' }), mk('b', null, { title: 'Beta' }));
+    renderApp();
+    await pressTitle('Alpha');
+    await userEvent.click(screen.getByRole('button', { name: 'Edit Alpha' }));
+    await userEvent.clear(screen.getByLabelText('Title'));
+
+    await pressTitle('Beta');
+    await userEvent.click(screen.getByRole('button', { name: 'Add item under Beta' }));
+    const dialog = screen.getByRole('dialog', { name: 'Unsaved changes' });
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Save changes' }));
+
+    expect(useTodoStore.getState().todos.a.title).toBe('Alpha');
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.getByRole('form', { name: 'Edit Alpha' })).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent('Title is required');
+    expect(screen.getByLabelText('Title')).toHaveFocus();
+    expect(useUiStore.getState().openEditor).toEqual({ kind: 'edit', id: 'a' });
   });
 });

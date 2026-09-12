@@ -213,3 +213,37 @@ describe('uiStore', () => {
     expect(editorKindFor(addAlpha, 'alpha')).toBe('add');
   });
 });
+
+describe('resolvePending', () => {
+  it('opens the pending next editor and clears dirtiness and the prompt', () => {
+    const store = createUiStore();
+    store.getState().requestOpen(editAlpha);
+    store.getState().setDirty(true);
+    store.getState().requestOpen(root);
+    store.getState().resolvePending();
+    expect(store.getState().openEditor).toEqual(root);
+    expect(store.getState().editorDirty).toBe(false);
+    expect(store.getState().pendingClose).toBeNull();
+  });
+
+  it('closes the editor when the prompt has no next', () => {
+    const store = createUiStore();
+    store.getState().requestOpen(editAlpha);
+    store.getState().setDirty(true);
+    store.getState().requestClose();
+    store.getState().resolvePending();
+    expect(store.getState().openEditor).toBeNull();
+    expect(store.getState().editorDirty).toBe(false);
+    expect(store.getState().pendingClose).toBeNull();
+  });
+
+  it('is a no-op without a pending prompt', () => {
+    const store = createUiStore();
+    store.getState().requestOpen(editAlpha);
+    store.getState().setDirty(true);
+    store.getState().resolvePending();
+    expect(store.getState().openEditor).toEqual(editAlpha);
+    expect(store.getState().editorDirty).toBe(true);
+    expect(store.getState().pendingClose).toBeNull();
+  });
+});
