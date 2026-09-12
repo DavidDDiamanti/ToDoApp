@@ -9,6 +9,16 @@
     <link rel="icon" href="/icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/apple-touch-icon-180x180.png" />
     <title>Todo</title>
+    <!-- Paints the stored theme and gap before first paint; useApplySettings re-applies
+         the truth once React mounts. Plain ES5, synchronous, and deliberately silent:
+         a corrupt or absent value just leaves the defaults in place. -->
+    <script>
+      try {
+        var s = JSON.parse(localStorage.getItem('todo-settings')).state;
+        if (s.theme === 'light' || s.theme === 'dark') document.documentElement.setAttribute('data-theme', s.theme);
+        if (s.gap === 'small' || s.gap === 'large') document.documentElement.setAttribute('data-gap', s.gap);
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>
