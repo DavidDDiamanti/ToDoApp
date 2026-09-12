@@ -1,10 +1,11 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { addTodo } from '../store/actions';
 import { useAuthStore } from '../store/authStore';
 import { useSyncStatus } from '../store/syncStatusStore';
 import { useTodoStore } from '../store/todoStore';
 import { useUiStore } from '../store/uiStore';
-import { PlusIcon } from './icons';
+import { GearIcon, PlusIcon } from './icons';
+import { SettingsDialog } from './SettingsDialog';
 import { TIP } from './tips';
 import { TodoEditor } from './TodoEditor';
 import styles from './Toolbar.module.css';
@@ -17,6 +18,8 @@ export function Toolbar() {
   const signOut = useAuthStore((s) => s.signOut);
   const sync = useSyncStatus((s) => s.state);
   const adding = useUiStore((s) => s.openEditor !== null && s.openEditor.kind === 'root');
+  // Nothing outside the toolbar needs to know the overlay is up, so it stays local state.
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   useEffect(
     () => () => {
@@ -35,6 +38,17 @@ export function Toolbar() {
           <input type="checkbox" checked={hideCompleted} onChange={(e) => setHideCompleted(e.target.checked)} aria-label="Hide completed" title={TIP.hideCompleted} />
           <span>Hide completed</span>
         </label>
+        <button
+          type="button"
+          className={styles.icon}
+          data-keeps-editor
+          aria-label="Settings"
+          title={TIP.settings}
+          aria-expanded={settingsOpen}
+          onClick={() => setSettingsOpen((open) => !open)}
+        >
+          <GearIcon />
+        </button>
         <button
           type="button"
           className={styles.primary}
@@ -56,6 +70,7 @@ export function Toolbar() {
           onSave={(v) => addTodo(v, null)}
         />
       ) : null}
+      {settingsOpen ? <SettingsDialog onClose={() => setSettingsOpen(false)} /> : null}
     </header>
   );
 }

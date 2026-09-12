@@ -1,16 +1,16 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { ChevronIcon, GripIcon, PencilIcon, PlusIcon, TrashIcon } from './icons';
+import { ChevronIcon, GearIcon, GripIcon, PencilIcon, PlusIcon, TrashIcon } from './icons';
 
 describe('icons', () => {
   it('render as decorative SVGs hidden from assistive tech', () => {
     render(
       <div>
-        <ChevronIcon /><PlusIcon /><PencilIcon /><GripIcon /><TrashIcon />
+        <ChevronIcon /><PlusIcon /><PencilIcon /><GripIcon /><TrashIcon /><GearIcon />
       </div>,
     );
     const svgs = document.querySelectorAll('svg');
-    expect(svgs).toHaveLength(5);
+    expect(svgs).toHaveLength(6);
     for (const svg of svgs) expect(svg).toHaveAttribute('aria-hidden', 'true');
     expect(screen.queryByRole('img')).toBeNull();
   });

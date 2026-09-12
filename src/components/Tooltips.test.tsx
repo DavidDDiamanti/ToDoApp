@@ -1,9 +1,10 @@
-import { render, screen, within } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { Toolbar } from './Toolbar';
 import { TodoTree } from './TodoTree';
 import { TIP } from './tips';
+import { useSettingsStore } from '../store/settingsStore';
 import { useTodoStore } from '../store/todoStore';
 import { useUiStore } from '../store/uiStore';
 import { mk } from '../test/fixtures';
@@ -22,6 +23,9 @@ function tip(name: string): string | null {
 beforeEach(() => {
   useTodoStore.getState().reset();
   useUiStore.getState().reset();
+  act(() => {
+    useSettingsStore.getState().reset();
+  });
 });
 
 describe('hover text', () => {
@@ -74,8 +78,38 @@ describe('hover text', () => {
 
   it('titles the toolbar controls', () => {
     expect(screen.getByRole('checkbox', { name: 'Hide completed' })).toHaveAttribute('title', TIP.hideCompleted);
+    expect(tip('Settings')).toBe(TIP.settings);
     expect(tip('New item')).toBe(TIP.newItem);
     expect(tip('Sign out')).toBe(TIP.signOut);
+  });
+});
+
+describe('hover text in the settings dialog', () => {
+  it('titles the switch, the radios and Done', async () => {
+    render(<Toolbar />);
+    await userEvent.click(screen.getByRole('button', { name: 'Settings' }));
+    const dialog = within(screen.getByRole('dialog', { name: 'Settings' }));
+
+    expect(dialog.getByRole('switch', { name: 'Night mode' })).toHaveAttribute('title', TIP.nightMode);
+    expect(dialog.getByRole('radio', { name: 'Small' })).toHaveAttribute('title', TIP.gapSmall);
+    expect(dialog.getByRole('radio', { name: 'Medium' })).toHaveAttribute('title', TIP.gapMedium);
+    expect(dialog.getByRole('radio', { name: 'Large' })).toHaveAttribute('title', TIP.gapLarge);
+    expect(dialog.getByRole('button', { name: 'Done' })).toHaveAttribute('title', TIP.done);
+
+    const controls = [...dialog.getAllByRole('button'), ...dialog.getAllByRole('radio'), ...dialog.getAllByRole('switch')];
+    const untitled = controls.filter((c) => (c.getAttribute('title') ?? '').length === 0);
+    expect(untitled.map((c) => c.getAttribute('aria-label') ?? c.textContent)).toEqual([]);
+  });
+
+  it('titles the button that hands the theme back to the device', async () => {
+    act(() => {
+      useSettingsStore.getState().setTheme('dark');
+    });
+    render(<Toolbar />);
+    await userEvent.click(screen.getByRole('button', { name: 'Settings' }));
+    const dialog = within(screen.getByRole('dialog', { name: 'Settings' }));
+
+    expect(dialog.getByRole('button', { name: 'Use device setting' })).toHaveAttribute('title', TIP.useDevice);
   });
 });
 

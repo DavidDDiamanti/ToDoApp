@@ -65,4 +65,25 @@ describe('useOutsidePress', () => {
     expect(useUiStore.getState().activeItemId).toBe('a');
     body.remove();
   });
+
+  it('leaves a clean editor open when the press is on chrome marked [data-keeps-editor]', () => {
+    const wheel = document.createElement('button');
+    wheel.setAttribute('data-keeps-editor', '');
+    document.body.append(wheel);
+    renderHook(() => useOutsidePress());
+    act(() => {
+      useUiStore.getState().setActive('a');
+      useUiStore.getState().requestOpen({ kind: 'root' });
+    });
+
+    act(() => {
+      wheel.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+    });
+
+    expect(useUiStore.getState().openEditor).toEqual({ kind: 'root' });
+    expect(useUiStore.getState().pendingClose).toBeNull();
+    // It is still a press off every item body, so the selection goes.
+    expect(useUiStore.getState().activeItemId).toBeNull();
+    wheel.remove();
+  });
 });

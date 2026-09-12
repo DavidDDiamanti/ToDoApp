@@ -14,4 +14,11 @@ export const TIP = {
   signOut: 'Sign out',
   hideCompleted: 'Hide completed items',
   cancel: 'Cancel',
+  settings: 'Settings',
+  nightMode: 'Night mode',
+  useDevice: 'Use device setting',
+  gapSmall: 'Small gap',
+  gapMedium: 'Medium gap',
+  gapLarge: 'Large gap',
+  done: 'Done',
 } as const;

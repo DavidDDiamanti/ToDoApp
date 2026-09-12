@@ -20,8 +20,9 @@ export function useOutsidePress(): void {
       if (!insideItem && s.activeItemId !== null) s.setActive(null);
       if (s.openEditor === null) return;
       // A grip press is a move gesture, not a dismissal: the row it belongs to may be the one
-      // being edited, and closing the editor underneath the pointer loses the draft.
-      if (el !== null && el.closest('[data-editor-root], [data-editor-toggle], [data-drag-handle], [data-item-body]') !== null) return;
+      // being edited, and closing the editor underneath the pointer loses the draft. Chrome marked
+      // [data-keeps-editor] (the settings wheel) opens something over the editor rather than instead of it.
+      if (el !== null && el.closest('[data-editor-root], [data-editor-toggle], [data-drag-handle], [data-item-body], [data-keeps-editor]') !== null) return;
       s.requestClose();
       // The prompt mounts and focuses its Save button inside this very event; the compat mousedown
       // that follows would otherwise move focus to the pressed chrome (or the body). Cancelling the
