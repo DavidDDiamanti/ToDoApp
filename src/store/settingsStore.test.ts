@@ -1,0 +1,102 @@
+import { describe, expect, it } from 'vitest';
+import type { StateStorage } from 'zustand/middleware';
+import { createSettingsStore, GAP_SCALE, resolveTheme, useSettingsStore } from './settingsStore';
+
+/**
+ * A synchronous fake of localStorage. createMemoryStorage in storage.ts is async
+ * (it stands in for IndexedDB), which would make rehydration async; the settings
+ * store is backed by localStorage, so it hydrates before the first render and the
+ * assertions below can stay synchronous.
+ */
+function syncStorage(seed?: unknown): StateStorage & { dump(): Record<string, string> } {
+  const data: Record<string, string> = {};
+  if (seed !== undefined) data['todo-settings'] = JSON.stringify({ state: seed, version: 0 });
+  return {
+    getItem: (name) => data[name] ?? null,
+    setItem: (name, value) => {
+      data[name] = value;
+    },
+    removeItem: (name) => {
+      delete data[name];
+    },
+    dump: () => ({ ...data }),
+  };
+}
+
+describe('settingsStore', () => {
+  it('starts on the device theme and a medium gap', () => {
+    const store = createSettingsStore(syncStorage());
+    expect(store.getState().theme).toBe('system');
+    expect(store.getState().gap).toBe('medium');
+  });
+
+  it('setTheme and setGap replace the current values', () => {
+    const store = createSettingsStore(syncStorage());
+    store.getState().setTheme('dark');
+    expect(store.getState().theme).toBe('dark');
+    store.getState().setTheme('system');
+    expect(store.getState().theme).toBe('system');
+    store.getState().setGap('large');
+    expect(store.getState().gap).toBe('large');
+  });
+
+  it('reset returns both settings to their defaults', () => {
+    const store = createSettingsStore(syncStorage());
+    store.getState().setTheme('light');
+    store.getState().setGap('small');
+    store.getState().reset();
+    expect(store.getState().theme).toBe('system');
+    expect(store.getState().gap).toBe('medium');
+  });
+
+  it('persists only theme and gap, under the name the bootstrap script reads', () => {
+    const storage = syncStorage();
+    const store = createSettingsStore(storage);
+    store.getState().setTheme('dark');
+    store.getState().setGap('small');
+    const raw = storage.dump()['todo-settings'];
+    expect(raw).toBeDefined();
+    expect(JSON.parse(raw).state).toEqual({ theme: 'dark', gap: 'small' });
+    expect(useSettingsStore.persist.getOptions().name).toBe('todo-settings');
+  });
+
+  it('rehydrates stored settings', () => {
+    const store = createSettingsStore(syncStorage({ theme: 'dark', gap: 'small' }));
+    expect(store.getState().theme).toBe('dark');
+    expect(store.getState().gap).toBe('small');
+  });
+
+  it('falls back to the default for any stored value that is not a known literal', () => {
+    const store = createSettingsStore(syncStorage({ theme: 'neon', gap: 42 }));
+    expect(store.getState().theme).toBe('system');
+    expect(store.getState().gap).toBe('medium');
+  });
+
+  it('falls back field by field, keeping the actions', () => {
+    const store = createSettingsStore(syncStorage({ gap: 'large' }));
+    expect(store.getState().theme).toBe('system');
+    expect(store.getState().gap).toBe('large');
+    expect(typeof store.getState().setTheme).toBe('function');
+  });
+
+  it('survives a stored value that is not an object at all', () => {
+    const store = createSettingsStore(syncStorage(null));
+    expect(store.getState().theme).toBe('system');
+    expect(store.getState().gap).toBe('medium');
+  });
+});
+
+describe('resolveTheme', () => {
+  it('follows the device only when the theme is system', () => {
+    expect(resolveTheme('system', true)).toBe('dark');
+    expect(resolveTheme('system', false)).toBe('light');
+    expect(resolveTheme('light', true)).toBe('light');
+    expect(resolveTheme('dark', false)).toBe('dark');
+  });
+});
+
+describe('GAP_SCALE', () => {
+  it('scales the v4 gap by the agreed multiples', () => {
+    expect(GAP_SCALE).toEqual({ small: 0.7, medium: 1, large: 1.3 });
+  });
+});
