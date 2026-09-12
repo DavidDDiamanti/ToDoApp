@@ -1,3 +1,4 @@
+import { StrictMode } from 'react';
 import { act, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useApplySettings } from './useApplySettings';
@@ -73,6 +74,17 @@ afterEach(() => {
 });
 
 describe('useApplySettings', () => {
+  it('captures the authored theme-color values once, even under StrictMode double effects', () => {
+    stubMatchMedia(false);
+    act(() => { useSettingsStore.getState().setTheme('dark'); });
+    render(<StrictMode><Probe /></StrictMode>);
+    expect(contents()).toEqual(['#141A1F', '#141A1F']);
+
+    act(() => { useSettingsStore.getState().setTheme('system'); });
+
+    expect(contents()).toEqual(['#F7F8F4', '#141A1F']);
+  });
+
   it('leaves the document element bare while both settings are on their defaults', () => {
     stubMatchMedia(false);
     render(<Probe />);

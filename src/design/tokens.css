@@ -52,7 +52,7 @@
 }
 
 /* Dark palette, copy 1 of 2: the device setting, unless an explicit light override
-   is in force. The twelve declarations are identical to copy 2 below; CSS has no way
+   is in force. The eleven declarations are identical to copy 2 below; CSS has no way
    to share one block between a media query and an attribute selector, so every palette
    edit must be made in both places. */
 @media (prefers-color-scheme: dark) {
@@ -85,15 +85,12 @@
   --on-danger: #1A0805;
   --focus: #7CC6A0;
   --overdue: #F08A7E;
+  /* An override also pins the UA's own colours (form controls, scrollbars). */
+  color-scheme: dark;
 }
 
-/* An override also pins the UA's own colours (form controls, scrollbars). */
 :root[data-theme='light'] {
   color-scheme: light;
-}
-
-:root[data-theme='dark'] {
-  color-scheme: dark;
 }
 
 /* Gap between items: exact multiples of the 6px default. */

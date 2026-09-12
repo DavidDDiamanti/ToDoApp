@@ -6,7 +6,6 @@ export type Theme = 'system' | 'light' | 'dark';
 export type Gap = 'small' | 'medium' | 'large';
 
 /** Multiples of the v4 --gap-item (6px): 4.2px, 6px, 7.8px. */
-export const GAP_SCALE: Record<Gap, number> = { small: 0.7, medium: 1, large: 1.3 };
 
 export interface PersistedSettingsState {
   theme: Theme;
@@ -43,21 +42,24 @@ export function safeStorage(storage: StateStorage): StateStorage {
   return {
     getItem: (name) => {
       try {
-        return storage.getItem(name);
+        const out = storage.getItem(name);
+        return out instanceof Promise ? out.catch(() => null) : out;
       } catch {
         return null;
       }
     },
     setItem: (name, value) => {
       try {
-        return storage.setItem(name, value);
+        const out = storage.setItem(name, value);
+        return out instanceof Promise ? out.catch(() => undefined) : out;
       } catch {
         return undefined;
       }
     },
     removeItem: (name) => {
       try {
-        return storage.removeItem(name);
+        const out = storage.removeItem(name);
+        return out instanceof Promise ? out.catch(() => undefined) : out;
       } catch {
         return undefined;
       }

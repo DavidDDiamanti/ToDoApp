@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { StateStorage } from 'zustand/middleware';
-import { createSettingsStore, GAP_SCALE, resolveTheme, safeStorage, useSettingsStore } from './settingsStore';
+import { createSettingsStore, resolveTheme, safeStorage, useSettingsStore } from './settingsStore';
 
 /**
  * A synchronous fake of localStorage. createMemoryStorage in storage.ts is async
@@ -87,6 +87,18 @@ describe('settingsStore', () => {
 });
 
 describe('safeStorage', () => {
+  it('swallows a rejected promise from an asynchronous storage', async () => {
+    const broken: StateStorage = {
+      getItem: () => Promise.reject(new Error('gone')),
+      setItem: () => Promise.reject(new Error('gone')),
+      removeItem: () => Promise.reject(new Error('gone')),
+    };
+    const safe = safeStorage(broken);
+    await expect(safe.getItem('todo-settings')).resolves.toBeNull();
+    await expect(safe.setItem('todo-settings', '{}')).resolves.toBeUndefined();
+    await expect(safe.removeItem('todo-settings')).resolves.toBeUndefined();
+  });
+
   it('swallows a storage that throws on write, so a settings change still applies in memory', () => {
     const broken: StateStorage = {
       getItem: () => null,
@@ -123,11 +135,5 @@ describe('resolveTheme', () => {
     expect(resolveTheme('system', false)).toBe('light');
     expect(resolveTheme('light', true)).toBe('light');
     expect(resolveTheme('dark', false)).toBe('dark');
-  });
-});
-
-describe('GAP_SCALE', () => {
-  it('scales the v4 gap by the agreed multiples', () => {
-    expect(GAP_SCALE).toEqual({ small: 0.7, medium: 1, large: 1.3 });
   });
 });
