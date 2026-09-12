@@ -10,6 +10,8 @@
   --accent: #2F6F4E;
   --on-accent: #FFFFFF;
   --danger: #B42318;
+  /* Dialog backdrop: a fixed dark scrim, so night mode dims rather than brightens. */
+  --scrim: rgb(28 36 48 / 0.4);
   --on-danger: #FFFFFF;
   --focus: #2F6F4E;
   --overdue: #B42318;
@@ -40,6 +42,7 @@
   --space-4: 16px;
   --space-5: 24px;
   --space-6: 32px;
+  --gap-item: 6px;
   --radius: 8px;
   --touch: 44px;
   --rail: 4px;
@@ -50,8 +53,12 @@
   --ease: cubic-bezier(0.2, 0, 0, 1);
 }
 
+/* Dark palette, copy 1 of 2: the device setting, unless an explicit light override
+   is in force. The twelve declarations are identical to copy 2 below; CSS has no way
+   to share one block between a media query and an attribute selector, so every palette
+   edit must be made in both places. */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme='light']) {
     --bg: #141A1F;
     --surface: #1C242B;
     --ink: #EEF1EA;
@@ -63,7 +70,40 @@
     --on-danger: #1A0805;
     --focus: #7CC6A0;
     --overdue: #F08A7E;
+    --scrim: rgb(0 0 0 / 0.55);
   }
+}
+
+/* Dark palette, copy 2 of 2: the explicit dark override, whatever the device says.
+   Identical to copy 1 inside @media (prefers-color-scheme: dark) above; edit both. */
+:root[data-theme='dark'] {
+  --bg: #141A1F;
+  --surface: #1C242B;
+  --ink: #EEF1EA;
+  --ink-muted: #A5AEB3;
+  --line: #2E3942;
+  --accent: #7CC6A0;
+  --on-accent: #0F1A14;
+  --danger: #F08A7E;
+  --on-danger: #1A0805;
+  --focus: #7CC6A0;
+  --overdue: #F08A7E;
+  --scrim: rgb(0 0 0 / 0.55);
+  /* An override also pins the UA's own colours (form controls, scrollbars). */
+  color-scheme: dark;
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+}
+
+/* Gap between items: exact multiples of the 6px default. */
+:root[data-gap='small'] {
+  --gap-item: calc(6px * 0.7);
+}
+
+:root[data-gap='large'] {
+  --gap-item: calc(6px * 1.3);
 }
 
 @media (prefers-reduced-motion: reduce) {

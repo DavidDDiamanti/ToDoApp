@@ -217,3 +217,108 @@ Requested after the first local run, before merging PR #1. Decisions were taken 
 ### 12.4 Manual step added
 
 Run `supabase/migrations/0002_due_time.sql` in the SQL editor before starting the v2 client; the client writes every column of the row, so saves fail until the column exists.
+
+## 13. v3 UI polish (2026-09-11)
+
+Requested after the first merge, before deployment. Decisions were taken with the user in a plan-mode conversation.
+
+### 13.1 Editors
+
+- Only one editor is open at a time anywhere in the app: the toolbar's "New item", an item's "Edit" or an item's "Add item under". The open editor and the pending discard prompt live in a small non-persisted UI store (`src/store/uiStore.ts`); components subscribe to primitive selectors only.
+- Pressing the button that opened an editor again closes it. Pressing a different editor button while one is open is a close request for the first; if the close proceeds, the requested editor opens.
+- A close request (toggle button, Cancel, Escape, a pointer press outside the editor, or displacement by another editor) closes directly when nothing changed. When the title, description, due date, due time or colour differ from the initial values (title and description compared trimmed), a "Discard changes?" dialog offers Discard and Keep editing. Saving never asks.
+- State machine (O open editor, D dirty, P prompt): requestOpen(k) with O empty opens k; same key and clean closes; same key and dirty prompts with no next; other key and clean displaces; other key and dirty prompts with next = k; requestClose closes when clean, prompts when dirty; confirmDiscard opens the remembered next (or none) and clears dirtiness; keepEditing clears the prompt; requests while a prompt is up are ignored.
+- The outside-press listener is one `document` `pointerdown` listener in `src/hooks/useClickOutsideEditor.ts`, mounted once in `Shell` (not `TodoTree`) so it is live before the store finishes hydrating; it ignores targets inside the editor form, its own toggle button and any open dialog.
+- Presses on a grip handle do not count as outside, and an item whose editor is open cannot be moved by drag or keyboard until the editor closes.
+- While any dialog is open the press is ignored outright, whatever the target: the dialog backdrop sits outside the editor, so without that guard pressing it would close the editor behind the dialog or stack a second prompt.
+- Known limitation: on touch screens the outside press fires at touch start, so beginning a scroll outside an open editor closes it (or asks, if changed).
+
+### 13.2 Active item and actions
+
+- Pressing an item's title toggles its details and makes it the active item. Exactly one item is active app-wide; only the active item renders its Edit, Add item under and Delete buttons (they are not in the DOM otherwise, so they are never in the tab order when hidden). Other items keep their details open but lose their buttons. Pressing the active item's title again hides its details; it stays active.
+- Applies on all screen sizes; the narrow-screen wrap layout keys on the active state.
+
+### 13.3 Dialogs
+
+- `ConfirmDialog` (heading, body, primary with danger or primary tone, optional extra, secondary) replaces the internals of `DeleteDialog`: backdrop, `role="dialog"`, Tab trap, Escape → secondary. Escape and Tab stop propagating; backdrop dismissal requires the pointer press to have started on the backdrop.
+- Deleting any item asks first. Leaves: "Delete '{title}'?", "It will be removed from your list.", Delete / Cancel. Parents keep the three-way dialog (delete children too, keep children and move them up, cancel). Section 6's statements about immediate leaf deletion and a native `<dialog>` are superseded.
+
+### 13.4 Row layout, depth shading, outline
+
+- Row order: grip handle, checkbox (adjacent, no gap), title with due time, chevron (only for items with children), actions.
+- The whole item is a drag surface: the row, including the title, and the details block. With a mouse a drag begins after 6 px of movement, on touch after a 350 ms hold; the grip starts immediately on both, and the controls inside the row (checkbox, chevron, action buttons, editor fields) keep their own gestures.
+- Each item has a `.body` wrapper (row, editor, dialog, details) with a background mixed from the surface towards the ink colour by 2 % per nesting level, capped at level 6, and a 1 px border 16 % further towards ink. The details block is 2 % darker again with a top border. Children sit outside the body in their own outlined items. In dark mode the same mixing lightens deeper levels. Contrast of `--ink-muted` on the deepest details block: 4.55:1 light, 4.62:1 dark (a 3 % step would fail).
+
+### 13.5 Hover text
+
+Every button, checkbox and colour swatch carries a native `title`: Move item, Expand children / Collapse children, Mark complete / Mark incomplete, Show details / Hide details, Edit item, Add item under, Delete item, New item, Sign out, Hide completed items, the editor's submit label and Cancel, the colour name, and each dialog button's label. Accessible names are unchanged.
+
+## 14. v4 interactions (2026-09-12)
+
+Requested after v3, still before the first deployment. Decisions were taken with the user in a plan-mode conversation; the three-way prompt was chosen for every close route, not only outside presses.
+
+### 14.1 Hover reveals the actions
+
+- An item's Edit, Add item under and Delete buttons render while a mouse or pen pointer is over the item's body (the row, its editor and its details block, not its children) and, as before, while the item is selected. Touch pointers never hover, so on a phone the buttons still appear by pressing the title.
+- Hovering does not select the item. Exactly one item is selected app-wide; hover is per item and purely visual.
+- No buttons appear on rows a drag crosses, and the dragged row hides its own buttons for the length of the drag; they return on the drop, because the pointer is still over the row. A row that moves without a pointer event (a keyboard move) forgets its hover so buttons never stick to a row that is no longer under the pointer.
+- The buttons stay out of the DOM when hidden, so they are never in the tab order. Keyboard users select the item (Space on the title) to reach them.
+- An item's own dialogs (delete, unsaved changes) are DOM descendants of its body, so hover is not tracked while one is up and is forgotten when it closes; because no enter fires when the dialog unmounts, the body also sets hover on the next mouse move (same guards). State resets keyed on prop changes (position, dialog closing) happen during render, not in effects.
+
+### 14.2 Selection and Enter
+
+- Pressing an item's title selects it (and toggles its details, as before). A pointer press anywhere outside every item body clears the selection: the toolbar, the New item button, the root editor, empty list space and the page all count as "off an item". A press inside an item's own open editor keeps it selected.
+- Enter, with nothing focused that has its own Enter behaviour, opens an editor: the New item editor when nothing is selected, otherwise Add item under the selected item (a collapsed parent is expanded first). The editor's title field takes focus.
+- Enter on a focused title button opens the child editor of that item and selects it; the details do not toggle (Space still toggles them). Enter on any other control (checkbox, chevron, grip, toolbar buttons, form fields) keeps its native action and never also opens an editor.
+- Enter is ignored while any editor, prompt or dialog is open, during a drag, with a modifier held, on key auto-repeat, or during IME composition. The same guards apply on the title button, where a blocked Enter falls through to the ordinary click. The editor swallows repeated Enter presses so a held key cannot submit the editor it just opened.
+- The title button keeps its "Show details" / "Hide details" name and hover text: that is still what a click, a tap, a screen-reader activation and Space do; only a physical Enter is routed to the child editor.
+- Both global listeners are single document listeners mounted once in `Shell`: `useOutsidePress` (`pointerdown`) and `useEnterToCreate` (`keydown`).
+
+### 14.3 Outside presses (supersedes the outside-press bullets of 13.1)
+
+- A press on any item body is an ordinary interaction (show details, tick, expand, move, select) and never asks to close an open editor, even a changed one. Only presses on chrome and empty space, outside every item body and not on the editor itself or its toggle, request a close.
+- Pressing a different item's Edit or Add item under button still displaces the open editor through the store, with the prompt if it has changes.
+- Consequences: starting a drag on an item while a clean root editor is open leaves that editor open; a delete dialog can open over an editor of another item.
+- Any open dialog still blocks presses outright. Grip presses are still never a dismissal. A mouse or pen press outside that raises the prompt is cancelled (`preventDefault` on the pointerdown) so the following compat mouse events cannot move focus away from the prompt's Save button; touch presses are not cancelled, so scrolling still works.
+
+### 14.4 The unsaved-changes prompt (supersedes "Discard changes?" in 13.1)
+
+- Every close request on an editor with changes (toggle button, Cancel, Escape, outside press, displacement) opens the "Unsaved changes" dialog with three buttons, in order: the editor's submit label (Save changes or Add item, focused by default), Discard, Keep editing.
+- Save validates like the form: with an empty title nothing is saved, the prompt closes, the editor stays open with "Title is required" and focus on the title. With a valid title the values are saved, then whatever the close request wanted happens (close, or open the requested editor).
+- Discard and Keep editing behave as before. Escape in the prompt is Keep editing, and a held Enter's repeats never press the focused button. Store: `resolvePending` applies the remembered next editor and clears the prompt; `confirmDiscard` is now an alias of it. Save and Discard both go through `resolvePendingEditor` in actions.ts, which resolves the prompt and, when the remembered next editor is a child editor, expands its collapsed parent just as a direct Add would (`revealAdd`); `confirmDiscard` remains a store-level alias of `resolvePending`. An item that unmounts while it is the remembered next editor drops itself from the prompt (`dropNext`), so the prompt then simply closes the editor.
+
+### 14.5 Spacing
+
+The gap between sibling items and between a parent body and its first child is the new `--gap-item` token, 6 px (1.5 × `--space-1`), up from 4 px.
+
+## 15. v5 settings (2026-09-12)
+
+Requested after v4. Decisions taken with the user: the theme follows the device until the user overrides it; settings are stored per device, not synced.
+
+### 15.1 Store
+
+`src/store/settingsStore.ts` is a persisted zustand store on `localStorage` under the key `todo-settings`, holding `theme` (`system`, `light`, `dark`; default `system`) and `gap` (`small`, `medium`, `large`; default `medium`). Stored values are validated on rehydration and unknown ones fall back to the defaults. `resolveTheme(theme, systemDark)` is the pure mapping to `light` or `dark`. It is separate from `uiStore`, which stays UI-only and unpersisted. The storage adapter never throws (`safeStorage`), and even reading `localStorage` is guarded (`browserStorage`, since a site with storage blocked throws on the getter itself), so a browser with storage disabled still changes settings in memory for the session. The store carries no gap-scale constant: the 0.7 and 1.3 multiples live only in `tokens.css` (a constant shipped in the first commit was removed as a second source of truth).
+
+### 15.2 Applying the settings
+
+- `useApplySettings`, mounted once in `App` above the sign-in gate, reads the device preference through `useSystemDark` (one media-query subscription exposed as an external store; the settings dialog reads the same hook) and mirrors the store onto `<html>`: `data-theme` is set only for an explicit override and removed for `system`; `data-gap` is set only for `small` or `large`. It also updates both `theme-color` meta tags to the resolved background and restores their original values for `system`, and re-resolves on the device's `prefers-color-scheme` change while following the device.
+- `tokens.css` keeps the light palette on `:root`. The dark palette appears twice, byte for byte: under `@media (prefers-color-scheme: dark)` scoped to `:root:not([data-theme='light'])`, and under `:root[data-theme='dark']`; CSS has no way to share one block between a media query and an attribute selector, and a comment on each block points at the other. `color-scheme` follows the override so native controls match.
+- Gap: `--gap-item` is 6 px by default, `calc(6px * 0.7)` for small and `calc(6px * 1.3)` for large, keyed on `data-gap`.
+- A small inline script in `index.html`, before the module script, reads `todo-settings` from `localStorage` and sets the same attributes before first paint so a reload never flashes the wrong theme or spacing. It is wrapped in try/catch; the hook re-applies the truth after React mounts. No content security policy restricts inline scripts today; adding one later needs a hash or nonce for this script.
+
+### 15.3 Dialog frame
+
+`DialogFrame` holds what the confirm dialog used to own: the backdrop with press-then-click dismissal, `role="dialog"` with `aria-modal`, heading and description ids, the capture-phase document Escape, the held-Enter guard, the Tab trap and the StrictMode-safe focus restore. `ConfirmDialog` is now its body paragraph and button row on top of the frame; `SettingsDialog` is the second user.
+
+### 15.4 The wheel and the overlay
+
+- A gear button in the toolbar (accessible name Settings, hover text Settings, `aria-expanded`) opens the Settings dialog. Done, Escape and a backdrop press close it; focus returns to the wheel.
+- Night mode is a switch (`role="switch"`) whose position shows the resolved theme. While no override is set, "Following the device setting" is shown under it; once overridden, a "Use device setting" button clears the override.
+- Gap between items is a radio group: Small, Medium, Large. Done takes focus when the dialog opens, as the action button does in the confirm dialogs. "Use device setting" unmounts on activation and hands focus to the switch, so keyboard focus never falls out of the Tab trap. The wheel carries `aria-haspopup="dialog"` and only ever opens the dialog (the backdrop covers it while open).
+- Narrow screens (≤480 px) keep all six toolbar controls on one row by making the New item label, the Hide completed label and the sync status text screen-reader only; every control keeps its title and accessible name.
+- The dialog backdrop uses a `--scrim` token (a translucent dark colour in both palettes), so night mode dims the page rather than brightening it.
+- The wheel carries `data-keeps-editor`, which the outside-press hook treats like an editor toggle: pressing it never closes or prompts an open editor. It still deselects the selected item, like any press off an item. While the dialog is open, Enter, drags and outside presses are blocked by the existing dialog checks.
+
+### 15.5 Not covered
+
+Settings do not sync between devices. The PWA manifest colours stay light; the live `theme-color` meta follows the theme. Fractional gaps (4.2 px, 7.8 px) may round by a pixel between rows.

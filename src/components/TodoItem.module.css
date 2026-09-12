@@ -1,8 +1,10 @@
 .item {
+  --depth-mix: calc(min(var(--depth, 0), 6) * 2%);
   position: relative;
   list-style: none;
   padding-left: calc(var(--rail) + var(--space-3));
 }
+.item + .item { margin-top: var(--gap-item); }
 .item::before {
   content: '';
   position: absolute;
@@ -16,29 +18,40 @@
 }
 .item[data-completed='true']::before { opacity: 0.35; }
 
+/* Each level is tinted 2% further towards --ink, so nesting reads as depth without indent alone. */
+.body {
+  background: color-mix(in srgb, var(--ink) var(--depth-mix), var(--surface));
+  border: 1px solid color-mix(in srgb, var(--ink) calc(var(--depth-mix) + 16%), var(--surface));
+  border-radius: var(--radius);
+}
+
 .row {
   position: relative;
   display: flex;
   align-items: center;
-  gap: var(--space-1);
+  gap: 0;
   min-height: var(--touch);
-  border-radius: var(--radius);
+  border-radius: calc(var(--radius) - 1px);
+  /* A long press on the drag surface must not raise the iOS callout menu. */
+  -webkit-touch-callout: none;
   transition: background var(--motion) var(--ease), box-shadow var(--motion) var(--ease);
 }
-.item[data-dragging='true'] > .row { opacity: 0.45; }
-.item[data-drop='before'] > .row { box-shadow: inset 0 3px 0 0 var(--accent); }
-.item[data-drop='after'] > .row { box-shadow: inset 0 -3px 0 0 var(--accent); }
-/* 14% is the ceiling: above it --ink-muted on --bg drops below 4.5:1 (4.58:1 at 14%). */
-.item[data-drop='inside'] > .row {
-  background: color-mix(in srgb, var(--accent) 14%, transparent);
+.item[data-dragging='true'] > .body > .row { opacity: 0.45; }
+.item[data-drop='before'] > .body > .row { box-shadow: inset 0 3px 0 0 var(--accent); }
+.item[data-drop='after'] > .body > .row { box-shadow: inset 0 -3px 0 0 var(--accent); }
+/* 14% accent into --surface: about 4.9:1 light, 5.2:1 dark for --ink-muted; over the depth-6 body a
+   transparent mix would fall to about 4.0:1. */
+.item[data-drop='inside'] > .body > .row {
+  background: color-mix(in srgb, var(--accent) 14%, var(--surface));
   box-shadow: inset 0 0 0 2px var(--accent);
 }
 
 /* Forced colours drop box-shadow and color-mix, so redraw the indicator with system colours. */
 @media (forced-colors: active) {
-  .item[data-drop='inside'] > .row { outline: 3px solid Highlight; outline-offset: -3px; }
-  .item[data-drop='before'] > .row { border-top: 3px solid Highlight; }
-  .item[data-drop='after'] > .row { border-bottom: 3px solid Highlight; }
+  .item[data-drop='inside'] > .body > .row { outline: 3px solid Highlight; outline-offset: -3px; }
+  .item[data-drop='before'] > .body > .row { border-top: 3px solid Highlight; }
+  .item[data-drop='after'] > .body > .row { border-bottom: 3px solid Highlight; }
+  .details { border-top: 1px solid CanvasText; }
 }
 .handle {
   width: var(--touch);
@@ -58,8 +71,7 @@
 .handle:hover { color: var(--ink); }
 .handle:active { cursor: grabbing; }
 
-.spacer { width: var(--touch); flex: none; }
-.checkbox { width: 22px; height: 22px; margin: 0 var(--space-2); accent-color: var(--accent); flex: none; scroll-margin-top: calc(var(--touch) + var(--space-4)); }
+.checkbox { width: 22px; height: 22px; margin: 0 var(--space-2) 0 0; accent-color: var(--accent); flex: none; scroll-margin-top: calc(var(--touch) + var(--space-4)); }
 
 .titleButton {
   flex: 1;
@@ -77,7 +89,7 @@
 }
 .titleButton:hover { background: color-mix(in srgb, var(--ink) 6%, transparent); }
 .title { flex: 1; min-width: 0; overflow-wrap: anywhere; }
-.item[data-completed='true'] > .row .title { text-decoration: line-through; color: var(--ink-muted); }
+.item[data-completed='true'] > .body > .row .title { text-decoration: line-through; color: var(--ink-muted); }
 
 .due {
   font-size: var(--text-sm);
@@ -104,19 +116,20 @@
 .iconButton:hover { background: color-mix(in srgb, var(--ink) 8%, transparent); color: var(--ink); }
 .iconButton.open svg { transform: rotate(90deg); }
 
-.details { padding: 0 var(--space-3) var(--space-3) calc(var(--touch) + var(--space-4)); }
+.details {
+  -webkit-touch-callout: none;
+  padding: var(--space-2) var(--space-3) var(--space-3) calc(var(--touch) + 22px + var(--space-4));
+  background: color-mix(in srgb, var(--ink) calc(var(--depth-mix) + 2%), var(--surface));
+  border-top: 1px solid color-mix(in srgb, var(--ink) calc(var(--depth-mix) + 16%), var(--surface));
+  border-radius: 0 0 calc(var(--radius) - 1px) calc(var(--radius) - 1px);
+}
 .description { margin: 0; white-space: pre-wrap; color: var(--ink); }
 .noDescription { margin: 0; color: var(--ink-muted); font-style: italic; }
 
-.children { list-style: none; margin: 0; padding: 0 0 0 var(--indent); }
+.children { list-style: none; margin: 0; padding: var(--gap-item) 0 0 var(--indent); }
 
 @media (max-width: 480px) {
-  .actions { display: none; }
-  .item[data-details='true'] > .row { flex-wrap: wrap; }
-  .item[data-details='true'] > .row .actions {
-    display: flex;
-    flex-basis: 100%;
-    justify-content: flex-end;
-    padding-left: var(--touch);
-  }
+  .item[data-active='true'] > .body > .row,
+  .item[data-hovered='true'] > .body > .row { flex-wrap: wrap; }
+  .actions { flex-basis: 100%; justify-content: flex-end; padding-left: var(--touch); }
 }

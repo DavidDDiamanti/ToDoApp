@@ -1,0 +1,36 @@
+/* One column of settings; the rows sit on the grid gap DialogFrame already provides. */
+.panel { max-width: 380px; }
+.section { display: grid; gap: var(--space-2); justify-items: start; }
+
+.switchRow { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); min-height: var(--touch); width: 100%; }
+.rowLabel { color: var(--ink); }
+
+/* The button is the 44px target; the track inside it is the part that looks like a switch. */
+.switch { display: inline-flex; align-items: center; justify-content: flex-end; min-width: var(--touch); min-height: var(--touch); padding: 0; background: none; border: 0; }
+.track {
+  display: block; width: 44px; height: 26px; padding: 2px;
+  border: 1px solid var(--line); border-radius: 13px; background: var(--line);
+  /* --motion is already 0ms under prefers-reduced-motion (tokens.css), so this needs no media query. */
+  transition: background-color var(--motion) var(--ease), border-color var(--motion) var(--ease);
+}
+.thumb { display: block; width: 20px; height: 20px; border-radius: 50%; background: var(--surface); transition: transform var(--motion) var(--ease); }
+.switch[aria-checked='true'] .track { background: var(--accent); border-color: var(--accent); }
+.switch[aria-checked='true'] .thumb { transform: translateX(18px); }
+
+.note { margin: 0; color: var(--ink-muted); font-size: var(--text-sm); }
+.secondary { min-height: var(--touch); padding: 0 var(--space-3); background: transparent; border: 1px solid var(--line); border-radius: var(--radius); color: var(--ink); }
+
+.fieldset { margin: 0; padding: 0; border: 0; display: grid; }
+.legend { padding: 0; color: var(--ink-muted); font-size: var(--text-sm); }
+.radioRow { display: flex; align-items: center; gap: var(--space-3); min-height: var(--touch); color: var(--ink); }
+.radio { width: 20px; height: 20px; margin: 0; accent-color: var(--accent); }
+
+.done { min-height: var(--touch); padding: 0 var(--space-4); background: transparent; border: 1px solid var(--line); border-radius: var(--radius); color: var(--ink); }
+
+/* A forced-colours palette drops background-color, which is all that separates the two switch states. */
+@media (forced-colors: active) {
+  .track { background: ButtonFace; border-color: ButtonText; }
+  .thumb { background: ButtonText; }
+  .switch[aria-checked='true'] .track { background: Highlight; border-color: Highlight; }
+  .switch[aria-checked='true'] .thumb { background: HighlightText; }
+}

@@ -17,6 +17,8 @@ export interface TreeContext {
   /** Shared clock for time-dependent display; ticks once a minute, so `tree` changes then. */
   now: Date;
   onHandlePointerDown(id: string, e: ReactPointerEvent<HTMLElement>): void;
+  /** Starts a drag from the item body: after 6 px of mouse movement, or a 350 ms touch hold. */
+  onSurfacePointerDown(id: string, e: ReactPointerEvent<HTMLElement>): void;
 }
 
 interface Props {
@@ -58,8 +60,11 @@ export function TodoTree({ getRect }: Props) {
     if (target.parentId !== null && collapsed[target.parentId] === true) toggleCollapsed(target.parentId);
     useDragStore.getState().announce(moveTodoTo(id, target) ? description : refused);
   }, []);
-  const { onHandlePointerDown } = useDragReorder({ rootRef, getMap, getRect, onDrop });
-  const tree = useMemo<TreeContext>(() => ({ hintId, now, onHandlePointerDown }), [hintId, now, onHandlePointerDown]);
+  const { onHandlePointerDown, onSurfacePointerDown } = useDragReorder({ rootRef, getMap, getRect, onDrop });
+  const tree = useMemo<TreeContext>(
+    () => ({ hintId, now, onHandlePointerDown, onSurfacePointerDown }),
+    [hintId, now, onHandlePointerDown, onSurfacePointerDown],
+  );
 
   return (
     <>

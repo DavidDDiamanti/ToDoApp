@@ -2,6 +2,8 @@ import { create } from 'zustand';
 import { createJSONStorage, persist, type StateStorage } from 'zustand/middleware';
 import type { Patch, Todo } from '../types';
 import { idbStorage } from './storage';
+// uiStore holds no todo state and imports nothing from here, so this direction is cycle-free.
+import { useUiStore } from './uiStore';
 
 export const STORE_VERSION = 2;
 
@@ -114,6 +116,7 @@ export const useTodoStore = createTodoStore({ storage: idbStorage, name: 'todo-s
 
 /** Point the persisted store at a per-user namespace and load it. */
 export async function switchStoreUser(userId: string): Promise<void> {
+  useUiStore.getState().reset();
   useTodoStore.getState().reset();
   useTodoStore.persist.setOptions({ name: `todo-store:${userId}` });
   await useTodoStore.persist.rehydrate();
@@ -126,6 +129,7 @@ export async function switchStoreUser(userId: string): Promise<void> {
  * rows) intact for their next sign-in.
  */
 export function detachStoreForSignOut(): void {
+  useUiStore.getState().reset();
   useTodoStore.persist.setOptions({ name: 'todo-store:signed-out' });
   useTodoStore.getState().reset();
 }
