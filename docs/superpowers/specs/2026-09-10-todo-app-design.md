@@ -252,3 +252,40 @@ Requested after the first merge, before deployment. Decisions were taken with th
 ### 13.5 Hover text
 
 Every button, checkbox and colour swatch carries a native `title`: Move item, Expand children / Collapse children, Mark complete / Mark incomplete, Show details / Hide details, Edit item, Add item under, Delete item, New item, Sign out, Hide completed items, the editor's submit label and Cancel, the colour name, and each dialog button's label. Accessible names are unchanged.
+
+## 14. v4 interactions (2026-09-12)
+
+Requested after v3, still before the first deployment. Decisions were taken with the user in a plan-mode conversation; the three-way prompt was chosen for every close route, not only outside presses.
+
+### 14.1 Hover reveals the actions
+
+- An item's Edit, Add item under and Delete buttons render while a mouse or pen pointer is over the item's body (the row, its editor and its details block, not its children) and, as before, while the item is selected. Touch pointers never hover, so on a phone the buttons still appear by pressing the title.
+- Hovering does not select the item. Exactly one item is selected app-wide; hover is per item and purely visual.
+- No buttons appear on rows a drag crosses, and the dragged row hides its own buttons for the length of the drag; they return on the drop, because the pointer is still over the row. A row that moves without a pointer event (a keyboard move) forgets its hover so buttons never stick to a row that is no longer under the pointer.
+- The buttons stay out of the DOM when hidden, so they are never in the tab order. Keyboard users select the item (Space on the title) to reach them.
+
+### 14.2 Selection and Enter
+
+- Pressing an item's title selects it (and toggles its details, as before). A pointer press anywhere outside every item body clears the selection: the toolbar, the New item button, the root editor, empty list space and the page all count as "off an item". A press inside an item's own open editor keeps it selected.
+- Enter, with nothing focused that has its own Enter behaviour, opens an editor: the New item editor when nothing is selected, otherwise Add item under the selected item (a collapsed parent is expanded first). The editor's title field takes focus.
+- Enter on a focused title button opens the child editor of that item and selects it; the details do not toggle (Space still toggles them). Enter on any other control (checkbox, chevron, grip, toolbar buttons, form fields) keeps its native action and never also opens an editor.
+- Enter is ignored while any editor, prompt or dialog is open, during a drag, with a modifier held, on key auto-repeat, or during IME composition. The same guards apply on the title button, where a blocked Enter falls through to the ordinary click. The editor swallows repeated Enter presses so a held key cannot submit the editor it just opened.
+- The title button keeps its "Show details" / "Hide details" name and hover text: that is still what a click, a tap, a screen-reader activation and Space do; only a physical Enter is routed to the child editor.
+- Both global listeners are single document listeners mounted once in `Shell`: `useOutsidePress` (`pointerdown`) and `useEnterToCreate` (`keydown`).
+
+### 14.3 Outside presses (supersedes the outside-press bullets of 13.1)
+
+- A press on any item body is an ordinary interaction (show details, tick, expand, move, select) and never asks to close an open editor, even a changed one. Only presses on chrome and empty space, outside every item body and not on the editor itself or its toggle, request a close.
+- Pressing a different item's Edit or Add item under button still displaces the open editor through the store, with the prompt if it has changes.
+- Consequences: starting a drag on an item while a clean root editor is open leaves that editor open; a delete dialog can open over an editor of another item.
+- Any open dialog still blocks presses outright. Grip presses are still never a dismissal.
+
+### 14.4 The unsaved-changes prompt (supersedes "Discard changes?" in 13.1)
+
+- Every close request on an editor with changes (toggle button, Cancel, Escape, outside press, displacement) opens the "Unsaved changes" dialog with three buttons, in order: the editor's submit label (Save changes or Add item, focused by default), Discard, Keep editing.
+- Save validates like the form: with an empty title nothing is saved, the prompt closes, the editor stays open with "Title is required" and focus on the title. With a valid title the values are saved, then whatever the close request wanted happens (close, or open the requested editor).
+- Discard and Keep editing behave as before. Escape in the prompt is Keep editing. Store: `resolvePending` applies the remembered next editor and clears the prompt; `confirmDiscard` is now an alias of it.
+
+### 14.5 Spacing
+
+The gap between sibling items and between a parent body and its first child is the new `--gap-item` token, 6 px (1.5 × `--space-1`), up from 4 px.
