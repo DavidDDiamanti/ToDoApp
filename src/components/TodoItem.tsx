@@ -173,6 +173,11 @@ export function TodoItem({ todo, map, depth, tree }: Props) {
           if (e.pointerType === 'touch' || dialogUp || useDragStore.getState().draggingId !== null) return;
           setHovered(true);
         }}
+        // The body's own dialogs sit inside it, so closing one fires no enter; the next move restores hover.
+        onPointerMove={(e) => {
+          if (hovered || e.pointerType === 'touch' || dialogUp || useDragStore.getState().draggingId !== null) return;
+          setHovered(true);
+        }}
         onPointerLeave={() => setHovered(false)}
       >
         <div className={styles.row} data-todo-id={todo.id} onPointerDown={onSurfacePointerDown}>

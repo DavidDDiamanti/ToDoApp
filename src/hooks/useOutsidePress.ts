@@ -26,7 +26,8 @@ export function useOutsidePress(): void {
       // The prompt mounts and focuses its Save button inside this very event; the compat mousedown
       // that follows would otherwise move focus to the pressed chrome (or the body). Cancelling the
       // pointerdown suppresses those compat mouse events.
-      if (useUiStore.getState().pendingClose !== null) e.preventDefault();
+      // Touch has no compat mouse events to suppress, and cancelling would stop the scroll.
+      if (e.pointerType !== 'touch' && useUiStore.getState().pendingClose !== null) e.preventDefault();
     };
     document.addEventListener('pointerdown', onDown);
     return () => document.removeEventListener('pointerdown', onDown);

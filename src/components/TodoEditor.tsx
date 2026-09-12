@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
 import type { ColorName } from '../lib/colors';
 import { normalizeTime, resolveDueDate } from '../lib/dates';
-import { revealAdd } from '../store/actions';
+import { resolvePendingEditor } from '../store/actions';
 import { useUiStore } from '../store/uiStore';
 import { ColorPicker } from './ColorPicker';
 import { ConfirmDialog } from './ConfirmDialog';
@@ -80,14 +80,6 @@ export function TodoEditor({ initial, heading, submitLabel, onSave, now = defaul
     if (trySave()) useUiStore.getState().closeEditor();
   }
 
-  /** Applies the close the prompt was asked for; a requested child editor is revealed like a direct open. */
-  function finishPending() {
-    const ui = useUiStore.getState();
-    const next = ui.pendingClose?.next ?? null;
-    ui.resolvePending();
-    if (next !== null && next.kind === 'add') revealAdd(next.id);
-  }
-
   function onKeyDown(e: KeyboardEvent<HTMLElement>) {
     // The Enter that opened this editor may still be held; its repeats must not submit it.
     if (e.key === 'Enter' && e.repeat) {
@@ -149,11 +141,11 @@ export function TodoEditor({ initial, heading, submitLabel, onSave, now = defaul
             onClick: () => {
               const ui = useUiStore.getState();
               // A failed save leaves the title focused; keepEditing only takes the prompt away.
-              if (trySave()) finishPending();
+              if (trySave()) resolvePendingEditor();
               else ui.keepEditing();
             },
           }}
-          extra={{ label: 'Discard', onClick: finishPending }}
+          extra={{ label: 'Discard', onClick: resolvePendingEditor }}
           secondary={{
             label: 'Keep editing',
             onClick: () => {

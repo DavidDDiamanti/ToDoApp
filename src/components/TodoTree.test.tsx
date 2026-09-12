@@ -256,6 +256,31 @@ describe('hover', () => {
     expect(screen.queryByRole('button', { name: 'Edit Alpha' })).toBeNull();
   });
 
+  it('picks the hover up again on the next mouse move after its dialog closes', async () => {
+    seed(mk('a', null, { title: 'Alpha' }));
+    render(<TodoTree />);
+    fireEvent.pointerEnter(bodyOf('Alpha'), { pointerType: 'mouse' });
+    await userEvent.click(screen.getByRole('button', { name: 'Delete Alpha' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.getByRole('treeitem', { name: 'Alpha' })).not.toHaveAttribute('data-hovered');
+
+    // The pointer never left the body (the backdrop was inside it), so no enter fires; a move does.
+    fireEvent.pointerMove(bodyOf('Alpha'), { pointerType: 'mouse' });
+
+    expect(screen.getByRole('treeitem', { name: 'Alpha' })).toHaveAttribute('data-hovered', 'true');
+    expect(screen.getByRole('button', { name: 'Edit Alpha' })).toBeInTheDocument();
+  });
+
+  it('a touch move or a move during a drag never sets the hover', () => {
+    seed(mk('a', null, { title: 'Alpha' }));
+    render(<TodoTree />);
+    fireEvent.pointerMove(bodyOf('Alpha'), { pointerType: 'touch' });
+    expect(screen.getByRole('treeitem', { name: 'Alpha' })).not.toHaveAttribute('data-hovered');
+    act(() => { useDragStore.getState().start('other'); });
+    fireEvent.pointerMove(bodyOf('Alpha'), { pointerType: 'mouse' });
+    expect(screen.getByRole('treeitem', { name: 'Alpha' })).not.toHaveAttribute('data-hovered');
+  });
+
   it('forgets the hover when its unsaved-changes prompt closes', async () => {
     seed(mk('a', null, { title: 'Alpha' }));
     render(<TodoTree />);

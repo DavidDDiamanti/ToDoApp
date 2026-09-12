@@ -68,6 +68,8 @@ export function createUiStore(): UseBoundStore<StoreApi<UiState>> {
       if (pendingClose === null) return;
       set({ openEditor: pendingClose.next, editorDirty: false, pendingClose: null });
     },
+    // Kept as a store-level alias of resolvePending; the app closes prompts through
+    // resolvePendingEditor in actions.ts, which also reveals a remembered child editor.
     confirmDiscard: () => get().resolvePending(),
     keepEditing: () => set({ pendingClose: null }),
     dropNext: (id) => {

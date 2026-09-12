@@ -52,6 +52,17 @@ export function moveTodoTo(id: string, target: Placement): boolean {
   return true;
 }
 
+/**
+ * Applies the close a prompt was asked for: the remembered next editor opens (or none), and a
+ * remembered child editor is revealed under a collapsed parent just as a direct open would be.
+ */
+export function resolvePendingEditor(): void {
+  const ui = useUiStore.getState();
+  const next = ui.pendingClose?.next ?? null;
+  ui.resolvePending();
+  if (next !== null && next.kind === 'add') revealAdd(next.id);
+}
+
 /** Expands a collapsed parent whose child editor is open, so the editor is visible. */
 export function revealAdd(id: string): void {
   if (editorKindFor(useUiStore.getState().openEditor, id) !== 'add') return;

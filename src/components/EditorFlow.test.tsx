@@ -721,6 +721,18 @@ describe('saving from the unsaved-changes prompt', () => {
     expect(screen.getByRole('dialog', { name: 'Unsaved changes' })).toBeInTheDocument();
   });
 
+  it('does not cancel a touch press that raises the prompt, so the page can still scroll', async () => {
+    seed(mk('a', null, { title: 'Alpha' }));
+    renderApp();
+    await userEvent.click(screen.getByRole('button', { name: 'New item' }));
+    await userEvent.type(screen.getByLabelText('Title'), 'Gamma');
+
+    const notPrevented = fireEvent.pointerDown(screen.getByRole('heading', { name: 'Todo' }), { pointerType: 'touch' });
+
+    expect(notPrevented).toBe(true);
+    expect(screen.getByRole('dialog', { name: 'Unsaved changes' })).toBeInTheDocument();
+  });
+
   it('adds the new item and closes after an outside press', async () => {
     seed(mk('a', null, { title: 'Alpha' }));
     renderApp();
