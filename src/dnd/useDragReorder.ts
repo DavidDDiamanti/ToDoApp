@@ -9,6 +9,8 @@ import { collectRowRects, defaultRectReader, hitTest, type RectReader, type RowR
 const MOVE_THRESHOLD_PX = 6;
 /** How long a finger must rest on the surface before the drag takes over from scrolling. */
 const LONG_PRESS_MS = 350;
+/** How long the click swallower waits for the click a release may or may not fire. */
+const CLICK_SWALLOW_MS = 400;
 
 interface Options {
   rootRef: RefObject<HTMLElement | null>;
@@ -60,13 +62,36 @@ export function useDragReorder(opts: Options): DragStarters {
   const sessionRef = useRef<Session | null>(null);
   // Lives outside the session: it has to outlive the pointer up that fires it.
   const swallowClickRef = useRef<((e: MouseEvent) => void) | null>(null);
+  // A touch drop fires no click at all, so the swallower needs a way out of its own.
+  const swallowTimerRef = useRef<number | null>(null);
 
   const removeClickSwallower = useCallback(() => {
+    if (swallowTimerRef.current !== null) {
+      window.clearTimeout(swallowTimerRef.current);
+      swallowTimerRef.current = null;
+    }
     const listener = swallowClickRef.current;
     if (listener === null) return;
     swallowClickRef.current = null;
     window.removeEventListener('click', listener, true);
   }, []);
+
+  /**
+   * Eats the click the browser sends when a drag ends, so it cannot toggle the details of
+   * the row that was just dragged. Whichever comes first, the click or the 400 ms bound,
+   * takes the listener down again.
+   */
+  const armClickSwallower = useCallback(() => {
+    removeClickSwallower();
+    const onClick = (ev: MouseEvent) => {
+      removeClickSwallower();
+      ev.stopPropagation();
+      ev.preventDefault();
+    };
+    swallowClickRef.current = onClick;
+    window.addEventListener('click', onClick, true);
+    swallowTimerRef.current = window.setTimeout(removeClickSwallower, CLICK_SWALLOW_MS);
+  }, [removeClickSwallower]);
 
   const finish = useCallback(
     (keepClickSwallower?: boolean) => {
@@ -92,6 +117,11 @@ export function useDragReorder(opts: Options): DragStarters {
   const activate = useCallback(() => {
     const session = sessionRef.current;
     if (session === null || session.active) return;
+    // A dialog owns the pointer while it is up: nothing behind it may start moving.
+    if (document.querySelector('[role="dialog"]') !== null) {
+      finish();
+      return;
+    }
     if (session.timer !== null) {
       window.clearTimeout(session.timer);
       session.timer = null;
@@ -105,19 +135,12 @@ export function useDragReorder(opts: Options): DragStarters {
     session.blocked = new Set<string>([session.id, ...getDescendantIds(optsRef.current.getMap(), session.id)]);
     session.active = true;
     useDragStore.getState().start(session.id);
-    if (session.fromHandle) return;
-
-    // The browser fires a click on release: without this it would toggle the details
-    // of the row that was just dragged.
-    removeClickSwallower();
-    const onClick = (ev: MouseEvent) => {
+    // The grip swallows no click of its own, and a leftover one from an earlier drag
+    // must not outlive this gesture.
+    if (session.fromHandle) {
       removeClickSwallower();
-      ev.stopPropagation();
-      ev.preventDefault();
-    };
-    swallowClickRef.current = onClick;
-    window.addEventListener('click', onClick, true);
-
+      return;
+    }
     if (!session.touch) return;
     const onTouchMove = (ev: Event) => ev.preventDefault();
     session.onTouchMove = onTouchMove;
@@ -172,12 +195,25 @@ export function useDragReorder(opts: Options): DragStarters {
             optsRef.current.onDrop(id, target);
           }
         }
-        // The click swallower has to survive this: its click has not been dispatched yet.
+        // The click this release fires has not been dispatched yet: arm the swallower for it
+        // and keep it through `finish`.
+        if (session.active && !session.fromHandle) armClickSwallower();
         finish(true);
       };
       const onPointerCancel = (ev: PointerEvent) => {
         if (sessionRef.current === null) return;
         if (ev.pointerId !== pointerId) return;
+        finish();
+      };
+      /** Ends a gesture whose pointer is still down: its release still fires a click. */
+      const cancelWhileDown = () => {
+        const session = sessionRef.current;
+        if (session === null) return;
+        if (session.active && !session.fromHandle) {
+          armClickSwallower();
+          finish(true);
+          return;
+        }
         finish();
       };
       const onKeyDown = (ev: KeyboardEvent) => {
@@ -188,11 +224,10 @@ export function useDragReorder(opts: Options): DragStarters {
           ev.stopPropagation();
           ev.preventDefault();
         }
-        finish();
+        cancelWhileDown();
       };
       const onWindowBlur = () => {
-        if (sessionRef.current === null) return;
-        finish();
+        cancelWhileDown();
       };
 
       sessionRef.current = {
@@ -225,7 +260,7 @@ export function useDragReorder(opts: Options): DragStarters {
       }
       if (sessionRef.current.touch) sessionRef.current.timer = window.setTimeout(activate, LONG_PRESS_MS);
     },
-    [activate, finish],
+    [activate, armClickSwallower, finish],
   );
 
   const onHandlePointerDown = useCallback((id: string, e: ReactPointerEvent<HTMLElement>) => begin(id, e, true), [begin]);

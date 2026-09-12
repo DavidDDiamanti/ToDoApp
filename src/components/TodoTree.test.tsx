@@ -181,6 +181,12 @@ describe('TodoTree', () => {
     expect(row.children[1]).toHaveAttribute('type', 'checkbox');
     expect(row.children[2]).toHaveAttribute('aria-label', 'Show details for Alpha');
   });
+
+  it('marks the title button as a drag surface', () => {
+    seed(mk('a', null, { title: 'Alpha' }));
+    render(<TodoTree />);
+    expect(screen.getByRole('button', { name: /details for alpha/i })).toHaveAttribute('data-drag-surface');
+  });
 });
 
 describe('depth shading and the body wrapper', () => {

@@ -113,7 +113,7 @@ export function TodoItem({ todo, map, depth, tree }: Props) {
     const t = e.target;
     if (t instanceof Element && t.closest('input, select, textarea, a, [data-editor-root], [role="dialog"]') !== null) return;
     const b = t instanceof Element ? t.closest('button') : null;
-    if (b !== null && !b.classList.contains(styles.titleButton)) return;
+    if (b !== null && !b.hasAttribute('data-drag-surface')) return;
     tree.onSurfacePointerDown(todo.id, e);
   };
 
@@ -165,6 +165,7 @@ export function TodoItem({ todo, map, depth, tree }: Props) {
           <button
             type="button"
             className={styles.titleButton}
+            data-drag-surface
             aria-label={`${showDetails ? 'Hide' : 'Show'} details for ${todo.title}`}
             title={showDetails ? TIP.hideDetails : TIP.showDetails}
             aria-expanded={showDetails}

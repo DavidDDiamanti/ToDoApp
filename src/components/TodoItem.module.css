@@ -32,6 +32,8 @@
   gap: 0;
   min-height: var(--touch);
   border-radius: calc(var(--radius) - 1px);
+  /* A long press on the drag surface must not raise the iOS callout menu. */
+  -webkit-touch-callout: none;
   transition: background var(--motion) var(--ease), box-shadow var(--motion) var(--ease);
 }
 .item[data-dragging='true'] > .body > .row { opacity: 0.45; }
@@ -115,6 +117,7 @@
 .iconButton.open svg { transform: rotate(90deg); }
 
 .details {
+  -webkit-touch-callout: none;
   padding: var(--space-2) var(--space-3) var(--space-3) calc(var(--touch) + 22px + var(--space-4));
   background: color-mix(in srgb, var(--ink) calc(var(--depth-mix) + 2%), var(--surface));
   border-top: 1px solid color-mix(in srgb, var(--ink) calc(var(--depth-mix) + 16%), var(--surface));

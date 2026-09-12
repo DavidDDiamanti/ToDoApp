@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { MockInstance } from 'vitest';
 import { Toolbar } from './Toolbar';
 import { TodoTree } from './TodoTree';
 import { useTodoStore } from '../store/todoStore';
@@ -25,9 +26,37 @@ function seed(...todos: ReturnType<typeof mk>[]) {
   for (const t of todos) s.upsertTodo(t, false);
 }
 
+const LISTENERS = ['pointermove', 'pointerup', 'pointercancel', 'keydown', 'blur'];
+
+type ListenerSpy = MockInstance<(type: string, ...rest: never[]) => void>;
+
+function counts(spy: ListenerSpy) {
+  const out: Record<string, number> = {};
+  for (const name of LISTENERS) out[name] = spy.mock.calls.filter((c) => c[0] === name).length;
+  return out;
+}
+
+/** The title button, whatever state its details are in. */
+function titleOf(title: string) {
+  return (
+    screen.queryByRole('button', { name: `Show details for ${title}` }) ??
+    screen.getByRole('button', { name: `Hide details for ${title}` })
+  );
+}
+
+const MOUSE_DOWN = { button: 0, pointerId: 1, clientX: 100, clientY: 10, pointerType: 'mouse' } as const;
+
+function mouseMove(clientY: number) {
+  fireEvent.pointerMove(window, { pointerId: 1, clientX: 100, clientY, pointerType: 'mouse', buttons: 1 });
+}
+
 beforeEach(() => {
   useTodoStore.getState().reset();
   useUiStore.getState().reset();
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
 });
 
 describe('editor flow', () => {
@@ -324,5 +353,40 @@ describe('Add item under a collapsed item', () => {
     expect(useTodoStore.getState().collapsed.a).toBe(true);
     expect(screen.queryByRole('form', { name: 'New item under Alpha' })).toBeNull();
     expect(screen.getByRole('dialog', { name: 'Discard changes?' })).toBeInTheDocument();
+  });
+});
+
+describe('dragging around an open editor', () => {
+  it('does not start a drag while the discard prompt is open', async () => {
+    seed(mk('a', null, { title: 'Alpha' }), mk('b', null, { title: 'Beta' }));
+    const add = vi.spyOn(window, 'addEventListener');
+    const remove = vi.spyOn(window, 'removeEventListener');
+    renderApp();
+    await pressTitle('Alpha');
+    await userEvent.click(screen.getByRole('button', { name: 'Edit Alpha' }));
+    await userEvent.type(screen.getByLabelText('Title'), '!');
+
+    fireEvent.pointerDown(titleOf('Beta'), MOUSE_DOWN);
+    expect(screen.getByRole('dialog', { name: 'Discard changes?' })).toBeInTheDocument();
+
+    mouseMove(20);
+
+    expect(screen.getByRole('treeitem', { name: 'Beta' })).not.toHaveAttribute('data-dragging');
+    expect(screen.getByRole('tree')).not.toHaveAttribute('data-dragging');
+    expect(counts(remove)).toEqual(counts(add));
+    expect(screen.getAllByRole('dialog')).toHaveLength(1);
+  });
+
+  it('closes a clean root editor and still starts the drag that closed it', async () => {
+    seed(mk('a', null, { title: 'Alpha' }), mk('b', null, { title: 'Beta' }));
+    renderApp();
+    await userEvent.click(screen.getByRole('button', { name: 'New item' }));
+    expect(screen.getByRole('form', { name: 'New item' })).toBeInTheDocument();
+
+    fireEvent.pointerDown(titleOf('Alpha'), MOUSE_DOWN);
+    mouseMove(20);
+
+    expect(screen.queryByRole('form', { name: 'New item' })).toBeNull();
+    expect(screen.getByRole('treeitem', { name: 'Alpha' })).toHaveAttribute('data-dragging', 'true');
   });
 });

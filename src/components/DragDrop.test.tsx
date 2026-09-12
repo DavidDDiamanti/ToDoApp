@@ -541,4 +541,56 @@ describe('dragging from the item surface', () => {
     expect(counts(remove, SURFACE_LISTENERS)).toEqual(counts(add, SURFACE_LISTENERS));
     expect(vi.getTimerCount()).toBe(0);
   });
+
+  it('a touch drag that ends without a click leaves no listener armed', () => {
+    fakeClock();
+    seedFlat();
+    const add = vi.spyOn(window, 'addEventListener');
+    const remove = vi.spyOn(window, 'removeEventListener');
+    const view = render(<TodoTree getRect={getRect} />);
+    // Nothing is being dragged yet, so only the shared clock has a timer pending.
+    const idle = vi.getTimerCount();
+    fireEvent.pointerDown(titleOf('a'), TOUCH_DOWN);
+    act(() => {
+      vi.advanceTimersByTime(350);
+    });
+    expect(item('a')).toHaveAttribute('data-dragging', 'true');
+
+    fireEvent.pointerMove(window, { pointerId: 1, clientX: 100, clientY: 80, pointerType: 'touch' });
+    fireEvent.pointerUp(window, { pointerId: 1, clientX: 100, clientY: 80, pointerType: 'touch' });
+    // A touch release sends no synthetic click, so only the 400 ms bound can disarm the swallower.
+    act(() => {
+      vi.advanceTimersByTime(400);
+    });
+
+    expect(counts(remove, SURFACE_LISTENERS)).toEqual(counts(add, SURFACE_LISTENERS));
+    expect(vi.getTimerCount()).toBe(idle);
+
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Mark c complete' }));
+    expect(useTodoStore.getState().todos.c.completed).toBe(true);
+
+    view.unmount();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('keeps swallowing the click when Escape cancels the drag before the release', () => {
+    fakeClock();
+    seedFlat();
+    render(<TodoTree getRect={getRect} />);
+    const idle = vi.getTimerCount();
+    fireEvent.pointerDown(titleOf('a'), MOUSE_DOWN);
+    mouseMove(20);
+    expect(item('a')).toHaveAttribute('data-dragging', 'true');
+
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.getByRole('tree')).not.toHaveAttribute('data-dragging');
+
+    // The button is still down: its release still sends the click the drag started.
+    mouseUp(20);
+    fireEvent.click(titleOf('a'));
+
+    expect(titleOf('a')).toHaveAttribute('aria-expanded', 'false');
+    expect(useUiStore.getState().activeItemId).toBeNull();
+    expect(vi.getTimerCount()).toBe(idle);
+  });
 });
