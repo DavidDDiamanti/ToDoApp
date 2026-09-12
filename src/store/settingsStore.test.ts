@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { StateStorage } from 'zustand/middleware';
-import { createSettingsStore, GAP_SCALE, resolveTheme, useSettingsStore } from './settingsStore';
+import { createSettingsStore, GAP_SCALE, resolveTheme, safeStorage, useSettingsStore } from './settingsStore';
 
 /**
  * A synchronous fake of localStorage. createMemoryStorage in storage.ts is async
@@ -81,6 +81,37 @@ describe('settingsStore', () => {
 
   it('survives a stored value that is not an object at all', () => {
     const store = createSettingsStore(syncStorage(null));
+    expect(store.getState().theme).toBe('system');
+    expect(store.getState().gap).toBe('medium');
+  });
+});
+
+describe('safeStorage', () => {
+  it('swallows a storage that throws on write, so a settings change still applies in memory', () => {
+    const broken: StateStorage = {
+      getItem: () => null,
+      setItem: () => { throw new Error('QuotaExceededError'); },
+      removeItem: () => { throw new Error('QuotaExceededError'); },
+    };
+    const store = createSettingsStore(safeStorage(broken));
+    expect(() => store.getState().setTheme('dark')).not.toThrow();
+    expect(store.getState().theme).toBe('dark');
+    expect(() => store.persist.clearStorage()).not.toThrow();
+  });
+
+  it('treats a storage that throws on read as empty', () => {
+    const broken: StateStorage = {
+      getItem: () => { throw new Error('SecurityError'); },
+      setItem: () => undefined,
+      removeItem: () => undefined,
+    };
+    const store = createSettingsStore(safeStorage(broken));
+    expect(store.getState().theme).toBe('system');
+    expect(store.getState().gap).toBe('medium');
+  });
+
+  it('falls back per field when the stored state is a primitive', () => {
+    const store = createSettingsStore(syncStorage('x'));
     expect(store.getState().theme).toBe('system');
     expect(store.getState().gap).toBe('medium');
   });

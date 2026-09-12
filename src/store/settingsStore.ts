@@ -35,6 +35,36 @@ export function resolveTheme(theme: Theme, systemDark: boolean): 'light' | 'dark
   return theme;
 }
 
+/**
+ * Storage that never throws: a browser with storage disabled or over quota (Safari private mode
+ * throws on setItem) must still let the settings change in memory for the session.
+ */
+export function safeStorage(storage: StateStorage): StateStorage {
+  return {
+    getItem: (name) => {
+      try {
+        return storage.getItem(name);
+      } catch {
+        return null;
+      }
+    },
+    setItem: (name, value) => {
+      try {
+        return storage.setItem(name, value);
+      } catch {
+        return undefined;
+      }
+    },
+    removeItem: (name) => {
+      try {
+        return storage.removeItem(name);
+      } catch {
+        return undefined;
+      }
+    },
+  };
+}
+
 export function createSettingsStore(storage: StateStorage) {
   return create<SettingsState>()(
     persist(
@@ -68,5 +98,5 @@ export function createSettingsStore(storage: StateStorage) {
 // the module importable where there is no DOM; it rehydrates asynchronously, but
 // nothing is persisted there anyway.)
 export const useSettingsStore = createSettingsStore(
-  typeof localStorage === 'undefined' ? createMemoryStorage() : localStorage,
+  safeStorage(typeof localStorage === 'undefined' ? createMemoryStorage() : localStorage),
 );
