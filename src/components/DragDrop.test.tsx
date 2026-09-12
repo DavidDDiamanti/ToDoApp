@@ -49,12 +49,13 @@ function rootOrder() {
 }
 
 const LISTENERS = ['pointermove', 'pointerup', 'pointercancel', 'keydown', 'blur'];
+const SURFACE_LISTENERS = [...LISTENERS, 'touchmove', 'click'];
 
 type ListenerSpy = MockInstance<(type: string, ...rest: never[]) => void>;
 
-function counts(spy: ListenerSpy) {
+function counts(spy: ListenerSpy, names: string[] = LISTENERS) {
   const out: Record<string, number> = {};
-  for (const name of LISTENERS) out[name] = spy.mock.calls.filter((c) => c[0] === name).length;
+  for (const name of names) out[name] = spy.mock.calls.filter((c) => c[0] === name).length;
   return out;
 }
 
@@ -73,6 +74,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.useRealTimers();
 });
 
 describe('pointer drag and drop', () => {
@@ -332,5 +334,211 @@ describe('pointer drag and drop', () => {
     unsubscribe();
 
     expect(calls).toBe(1);
+  });
+});
+
+/** The title button, whatever state its details are in. */
+function titleOf(id: string) {
+  return (
+    screen.queryByRole('button', { name: `Show details for ${id}` }) ??
+    screen.getByRole('button', { name: `Hide details for ${id}` })
+  );
+}
+
+const MOUSE_DOWN = { button: 0, pointerId: 1, clientX: 100, clientY: 10, pointerType: 'mouse' } as const;
+const TOUCH_DOWN = { button: 0, pointerId: 1, clientX: 100, clientY: 10, pointerType: 'touch' } as const;
+
+function mouseMove(clientY: number) {
+  fireEvent.pointerMove(window, { pointerId: 1, clientX: 100, clientY, pointerType: 'mouse', buttons: 1 });
+}
+
+function mouseUp(clientY: number) {
+  fireEvent.pointerUp(window, { pointerId: 1, clientX: 100, clientY, pointerType: 'mouse' });
+}
+
+function fakeClock() {
+  vi.useFakeTimers();
+  // A whole minute boundary keeps the shared clock's own timeout a full minute away.
+  vi.setSystemTime(new Date('2026-01-01T12:00:00.000Z'));
+}
+
+describe('dragging from the item surface', () => {
+  it('starts a mouse drag past 6 px and swallows the click that follows the drop', () => {
+    seedFlat();
+    render(<TodoTree getRect={getRect} />);
+    fireEvent.pointerDown(titleOf('a'), MOUSE_DOWN);
+    mouseMove(12);
+
+    expect(item('a')).not.toHaveAttribute('data-dragging');
+
+    mouseMove(20);
+    expect(item('a')).toHaveAttribute('data-dragging', 'true');
+
+    mouseMove(80);
+    expect(item('b')).toHaveAttribute('data-drop', 'after');
+
+    mouseUp(80);
+    expect(rootOrder()).toEqual(['b', 'a', 'c']);
+
+    fireEvent.click(titleOf('a'));
+    expect(titleOf('a')).toHaveAttribute('aria-expanded', 'false');
+    expect(useUiStore.getState().activeItemId).toBeNull();
+  });
+
+  it('leaves a press and release without movement as an ordinary click', () => {
+    seedFlat();
+    const add = vi.spyOn(window, 'addEventListener');
+    render(<TodoTree getRect={getRect} />);
+    fireEvent.pointerDown(titleOf('a'), MOUSE_DOWN);
+    mouseUp(10);
+
+    expect(item('a')).not.toHaveAttribute('data-dragging');
+    expect(counts(add, SURFACE_LISTENERS).click).toBe(0);
+
+    fireEvent.click(titleOf('a'));
+    expect(titleOf('a')).toHaveAttribute('aria-expanded', 'true');
+    expect(useUiStore.getState().activeItemId).toBe('a');
+  });
+
+  it('abandons a pending touch drag when the finger moves before the hold completes', () => {
+    fakeClock();
+    seedFlat();
+    render(<TodoTree getRect={getRect} />);
+    fireEvent.pointerDown(titleOf('a'), TOUCH_DOWN);
+    act(() => {
+      vi.advanceTimersByTime(100);
+    });
+    fireEvent.pointerMove(window, { pointerId: 1, clientX: 100, clientY: 20, pointerType: 'touch' });
+
+    expect(screen.getByRole('tree')).not.toHaveAttribute('data-dragging');
+
+    act(() => {
+      vi.advanceTimersByTime(400);
+    });
+    fireEvent.pointerMove(window, { pointerId: 1, clientX: 100, clientY: 80, pointerType: 'touch' });
+
+    expect(screen.getByRole('tree')).not.toHaveAttribute('data-dragging');
+    expect(item('b')).not.toHaveAttribute('data-drop');
+  });
+
+  it('starts a touch drag after a 350 ms hold, blocks scrolling and reorders on release', () => {
+    fakeClock();
+    seedFlat();
+    const add = vi.spyOn(window, 'addEventListener');
+    const remove = vi.spyOn(window, 'removeEventListener');
+    render(<TodoTree getRect={getRect} />);
+    fireEvent.pointerDown(titleOf('a'), TOUCH_DOWN);
+
+    expect(item('a')).not.toHaveAttribute('data-dragging');
+
+    act(() => {
+      vi.advanceTimersByTime(350);
+    });
+    expect(item('a')).toHaveAttribute('data-dragging', 'true');
+
+    fireEvent.pointerMove(window, { pointerId: 1, clientX: 100, clientY: 80, pointerType: 'touch' });
+    expect(item('b')).toHaveAttribute('data-drop', 'after');
+    expect(window.dispatchEvent(new Event('touchmove', { bubbles: true, cancelable: true }))).toBe(false);
+
+    fireEvent.pointerUp(window, { pointerId: 1, clientX: 100, clientY: 80, pointerType: 'touch' });
+    expect(rootOrder()).toEqual(['b', 'a', 'c']);
+
+    fireEvent.click(titleOf('a'));
+    expect(counts(add, SURFACE_LISTENERS).touchmove).toBe(1);
+    expect(counts(remove, SURFACE_LISTENERS)).toEqual(counts(add, SURFACE_LISTENERS));
+  });
+
+  it('does not drag from the checkbox, the chevron or an action button', async () => {
+    seedNested();
+    render(<TodoTree getRect={getRect} />);
+
+    const expectNoDragFrom = (el: Element) => {
+      fireEvent.pointerDown(el, MOUSE_DOWN);
+      mouseMove(80);
+      expect(screen.getByRole('tree')).not.toHaveAttribute('data-dragging');
+      mouseUp(80);
+    };
+
+    expectNoDragFrom(screen.getByRole('checkbox', { name: 'Mark a complete' }));
+    expectNoDragFrom(screen.getByRole('button', { name: 'Collapse a' }));
+    await pressTitle('c');
+    expectNoDragFrom(screen.getByRole('button', { name: 'Edit c' }));
+    expect(rootOrder()).toEqual(['a', 'c']);
+  });
+
+  it('starts a drag from the details block', async () => {
+    seedFlat();
+    render(<TodoTree getRect={getRect} />);
+    await pressTitle('a');
+    fireEvent.pointerDown(screen.getByText('No description yet.'), MOUSE_DOWN);
+    mouseMove(80);
+
+    expect(item('a')).toHaveAttribute('data-dragging', 'true');
+
+    mouseUp(80);
+    expect(rootOrder()).toEqual(['b', 'a', 'c']);
+  });
+
+  it('keeps the grip starting a drag at pointer down with no movement', () => {
+    seedFlat();
+    render(<TodoTree getRect={getRect} />);
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Move a' }), MOUSE_DOWN);
+
+    expect(item('a')).toHaveAttribute('data-dragging', 'true');
+    expect(screen.getByRole('tree')).toHaveAttribute('data-dragging', 'true');
+  });
+
+  it('does not drag from the surface while the row own editor is open', async () => {
+    seedFlat();
+    render(<TodoTree getRect={getRect} />);
+    await pressTitle('a');
+    await userEvent.click(screen.getByRole('button', { name: 'Edit a' }));
+    expect(screen.getByRole('form', { name: 'Edit a' })).toBeInTheDocument();
+
+    fireEvent.pointerDown(titleOf('a'), MOUSE_DOWN);
+    mouseMove(80);
+
+    expect(item('a')).not.toHaveAttribute('data-dragging');
+    expect(screen.getByRole('tree')).not.toHaveAttribute('data-dragging');
+    expect(item('b')).not.toHaveAttribute('data-drop');
+  });
+
+  it('balances every window listener after a surface drag', () => {
+    seedFlat();
+    const add = vi.spyOn(window, 'addEventListener');
+    const remove = vi.spyOn(window, 'removeEventListener');
+    render(<TodoTree getRect={getRect} />);
+    fireEvent.pointerDown(titleOf('a'), MOUSE_DOWN);
+    mouseMove(80);
+    mouseUp(80);
+    fireEvent.click(titleOf('a'));
+
+    expect(counts(add, SURFACE_LISTENERS)).toEqual({
+      pointermove: 1,
+      pointerup: 1,
+      pointercancel: 1,
+      keydown: 1,
+      blur: 1,
+      touchmove: 0,
+      click: 1,
+    });
+    expect(counts(remove, SURFACE_LISTENERS)).toEqual(counts(add, SURFACE_LISTENERS));
+  });
+
+  it('clears the hold timer and every listener when it unmounts mid hold', () => {
+    fakeClock();
+    seedFlat();
+    const add = vi.spyOn(window, 'addEventListener');
+    const remove = vi.spyOn(window, 'removeEventListener');
+    const view = render(<TodoTree getRect={getRect} />);
+    fireEvent.pointerDown(titleOf('a'), TOUCH_DOWN);
+    act(() => {
+      vi.advanceTimersByTime(100);
+    });
+    view.unmount();
+
+    expect(counts(add, SURFACE_LISTENERS).pointermove).toBe(1);
+    expect(counts(remove, SURFACE_LISTENERS)).toEqual(counts(add, SURFACE_LISTENERS));
+    expect(vi.getTimerCount()).toBe(0);
   });
 });

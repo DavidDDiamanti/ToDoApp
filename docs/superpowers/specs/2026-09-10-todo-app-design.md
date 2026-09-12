@@ -246,6 +246,7 @@ Requested after the first merge, before deployment. Decisions were taken with th
 ### 13.4 Row layout, depth shading, outline
 
 - Row order: grip handle, checkbox (adjacent, no gap), title with due time, chevron (only for items with children), actions.
+- The whole item is a drag surface: the row, including the title, and the details block. With a mouse a drag begins after 6 px of movement, on touch after a 350 ms hold; the grip starts immediately on both, and the controls inside the row (checkbox, chevron, action buttons, editor fields) keep their own gestures.
 - Each item has a `.body` wrapper (row, editor, dialog, details) with a background mixed from the surface towards the ink colour by 2 % per nesting level, capped at level 6, and a 1 px border 16 % further towards ink. The details block is 2 % darker again with a top border. Children sit outside the body in their own outlined items. In dark mode the same mixing lightens deeper levels. Contrast of `--ink-muted` on the deepest details block: 4.55:1 light, 4.62:1 dark (a 3 % step would fail).
 
 ### 13.5 Hover text

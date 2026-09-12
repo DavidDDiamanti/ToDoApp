@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { CSSProperties, KeyboardEvent as ReactKeyboardEvent } from 'react';
+import type { CSSProperties, KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerEvent } from 'react';
 import { formatDue, isOverdue } from '../lib/dates';
 import { PALETTE } from '../lib/colors';
 import { buildChildrenMap, type ChildrenMap } from '../domain/tree';
@@ -105,6 +105,18 @@ export function TodoItem({ todo, map, depth, tree }: Props) {
     dragStore.requestFocus(todo.id);
   };
 
+  // The whole item body is a drag surface. Controls keep their own gestures: the checkbox,
+  // the chevron, the action buttons, the grip (it has its own handler) and anything inside an
+  // editor or a dialog. Only the title button, which opens details, doubles as a drag surface.
+  const onSurfacePointerDown = (e: ReactPointerEvent<HTMLElement>) => {
+    if (editorKind !== null) return;
+    const t = e.target;
+    if (t instanceof Element && t.closest('input, select, textarea, a, [data-editor-root], [role="dialog"]') !== null) return;
+    const b = t instanceof Element ? t.closest('button') : null;
+    if (b !== null && !b.classList.contains(styles.titleButton)) return;
+    tree.onSurfacePointerDown(todo.id, e);
+  };
+
   return (
     <li
       role="treeitem"
@@ -119,7 +131,7 @@ export function TodoItem({ todo, map, depth, tree }: Props) {
       style={{ '--item-color': railColor, '--depth': depth } as CSSProperties}
     >
       <div className={styles.body}>
-        <div className={styles.row} data-todo-id={todo.id}>
+        <div className={styles.row} data-todo-id={todo.id} onPointerDown={onSurfacePointerDown}>
           <button
             type="button"
             ref={handleRef}
@@ -258,7 +270,7 @@ export function TodoItem({ todo, map, depth, tree }: Props) {
         ) : null}
 
         {showDetails ? (
-          <div className={styles.details}>
+          <div className={styles.details} onPointerDown={onSurfacePointerDown}>
             {todo.description.length > 0 ? <p className={styles.description}>{todo.description}</p> : <p className={styles.noDescription}>No description yet.</p>}
           </div>
         ) : null}
