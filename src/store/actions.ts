@@ -52,12 +52,16 @@ export function moveTodoTo(id: string, target: Placement): boolean {
   return true;
 }
 
-/** Requests the child editor and, only if it really opened, reveals it under a collapsed parent. */
-export function openAddUnder(id: string): void {
-  const ui = useUiStore.getState();
-  ui.requestOpen({ kind: 'add', id });
-  // requestOpen is a request: a discard prompt or a dirty editor can refuse it.
+/** Expands a collapsed parent whose child editor is open, so the editor is visible. */
+export function revealAdd(id: string): void {
   if (editorKindFor(useUiStore.getState().openEditor, id) !== 'add') return;
   const { collapsed, toggleCollapsed } = useTodoStore.getState();
   if (collapsed[id] === true) toggleCollapsed(id);
+}
+
+/** Requests the child editor and, only if it really opened, reveals it under a collapsed parent. */
+export function openAddUnder(id: string): void {
+  useUiStore.getState().requestOpen({ kind: 'add', id });
+  // requestOpen is a request: a discard prompt or a dirty editor can refuse it.
+  revealAdd(id);
 }

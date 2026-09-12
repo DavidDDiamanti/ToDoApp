@@ -116,7 +116,7 @@ describe('editor flow', () => {
   });
 });
 
-describe('discard prompt across editors', () => {
+describe('unsaved-changes prompt across editors', () => {
   it('displacing a dirty editor asks first and Discard opens the requested one', async () => {
     seed(mk('a', null, { title: 'Alpha' }));
     renderApp();
@@ -366,7 +366,7 @@ describe('pressing outside the editor', () => {
 });
 
 describe('Delete while a prompt is up', () => {
-  it('does not open a delete dialog on top of the discard prompt', async () => {
+  it('does not open a delete dialog on top of the unsaved-changes prompt', async () => {
     seed(mk('a', null, { title: 'Alpha' }), mk('b', null, { title: 'Beta' }));
     renderApp();
     await userEvent.click(screen.getByRole('button', { name: 'New item' }));
@@ -387,7 +387,7 @@ describe('Delete while a prompt is up', () => {
 });
 
 describe('pressing a dialog backdrop', () => {
-  it('leaves the discard prompt standing and does not re-request a close', async () => {
+  it('leaves the unsaved-changes prompt standing and does not re-request a close', async () => {
     seed(mk('a', null, { title: 'Alpha' }));
     renderApp();
     await userEvent.click(screen.getByRole('button', { name: 'New item' }));
@@ -446,7 +446,7 @@ describe('Add item under a collapsed item', () => {
 });
 
 describe('dragging around an open editor', () => {
-  it('does not start a drag while the discard prompt is open', async () => {
+  it('does not start a drag while the unsaved-changes prompt is open', async () => {
     seed(mk('a', null, { title: 'Alpha' }), mk('b', null, { title: 'Beta' }));
     const add = vi.spyOn(window, 'addEventListener');
     const remove = vi.spyOn(window, 'removeEventListener');
@@ -647,6 +647,80 @@ describe('Enter opens an editor', () => {
 });
 
 describe('saving from the unsaved-changes prompt', () => {
+  it('Save into a collapsed parent expands it so the new editor is visible', async () => {
+    seed(mk('a', null, { title: 'Alpha' }), mk('b', null, { title: 'Beta' }), mk('c', 'b', { title: 'Gamma' }));
+    useTodoStore.getState().toggleCollapsed('b');
+    renderApp();
+    await pressTitle('Alpha');
+    await userEvent.click(screen.getByRole('button', { name: 'Edit Alpha' }));
+    await userEvent.type(screen.getByLabelText('Title'), '!');
+    await pressTitle('Beta');
+    await userEvent.click(screen.getByRole('button', { name: 'Add item under Beta' }));
+
+    const dialog = screen.getByRole('dialog', { name: 'Unsaved changes' });
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Save changes' }));
+
+    expect(screen.getByRole('form', { name: 'New item under Beta' })).toBeInTheDocument();
+    expect(useTodoStore.getState().collapsed.b).toBeUndefined();
+    expect(screen.getByRole('treeitem', { name: 'Gamma' })).toBeInTheDocument();
+  });
+
+  it('Discard into a collapsed parent expands it too', async () => {
+    seed(mk('a', null, { title: 'Alpha' }), mk('b', null, { title: 'Beta' }), mk('c', 'b', { title: 'Gamma' }));
+    useTodoStore.getState().toggleCollapsed('b');
+    renderApp();
+    await pressTitle('Alpha');
+    await userEvent.click(screen.getByRole('button', { name: 'Edit Alpha' }));
+    await userEvent.type(screen.getByLabelText('Title'), '!');
+    await pressTitle('Beta');
+    await userEvent.click(screen.getByRole('button', { name: 'Add item under Beta' }));
+
+    const dialog = screen.getByRole('dialog', { name: 'Unsaved changes' });
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Discard' }));
+
+    expect(screen.getByRole('form', { name: 'New item under Beta' })).toBeInTheDocument();
+    expect(useTodoStore.getState().collapsed.b).toBeUndefined();
+  });
+
+  it('forgets a requested next editor whose item disappears while the prompt is up', async () => {
+    seed(mk('a', null, { title: 'Alpha' }), mk('b', null, { title: 'Beta' }));
+    renderApp();
+    await pressTitle('Alpha');
+    await userEvent.click(screen.getByRole('button', { name: 'Edit Alpha' }));
+    await userEvent.type(screen.getByLabelText('Title'), '!');
+    await pressTitle('Beta');
+    await userEvent.click(screen.getByRole('button', { name: 'Add item under Beta' }));
+    expect(useUiStore.getState().pendingClose).toEqual({ next: { kind: 'add', id: 'b' } });
+
+    // A background pull removes Beta.
+    act(() => {
+      const { todos } = useTodoStore.getState();
+      const rest = Object.fromEntries(Object.entries(todos).filter(([id]) => id !== 'b'));
+      useTodoStore.setState({ todos: rest });
+    });
+
+    expect(useUiStore.getState().pendingClose).toEqual({ next: null });
+    const dialog = screen.getByRole('dialog', { name: 'Unsaved changes' });
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Save changes' }));
+    expect(useUiStore.getState().openEditor).toBeNull();
+  });
+
+  it('cancels the outside press that raises the prompt, so focus stays in the prompt', async () => {
+    seed(mk('a', null, { title: 'Alpha' }));
+    renderApp();
+    await userEvent.click(screen.getByRole('button', { name: 'New item' }));
+
+    const cleanNotPrevented = fireEvent.pointerDown(screen.getByRole('heading', { name: 'Todo' }));
+    expect(cleanNotPrevented).toBe(true);
+    expect(screen.queryByRole('form')).toBeNull();
+
+    await userEvent.click(screen.getByRole('button', { name: 'New item' }));
+    await userEvent.type(screen.getByLabelText('Title'), 'Gamma');
+    const dirtyNotPrevented = fireEvent.pointerDown(screen.getByRole('heading', { name: 'Todo' }));
+    expect(dirtyNotPrevented).toBe(false);
+    expect(screen.getByRole('dialog', { name: 'Unsaved changes' })).toBeInTheDocument();
+  });
+
   it('adds the new item and closes after an outside press', async () => {
     seed(mk('a', null, { title: 'Alpha' }));
     renderApp();

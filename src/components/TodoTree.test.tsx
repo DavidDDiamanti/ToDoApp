@@ -230,6 +230,45 @@ describe('hover', () => {
     useDragStore.getState().end();
   });
 
+  it('ignores pointer entry while its own dialog is up', async () => {
+    seed(mk('a', null, { title: 'Alpha' }));
+    render(<TodoTree />);
+    await pressTitle('Alpha');
+    await userEvent.click(screen.getByRole('button', { name: 'Delete Alpha' }));
+    fireEvent.pointerLeave(bodyOf('Alpha'));
+
+    // The backdrop is a DOM descendant of the body, so moving over it re-enters the body.
+    fireEvent.pointerEnter(bodyOf('Alpha'), { pointerType: 'mouse' });
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(screen.getByRole('treeitem', { name: 'Alpha' })).not.toHaveAttribute('data-hovered');
+  });
+
+  it('forgets the hover when its delete dialog closes', async () => {
+    seed(mk('a', null, { title: 'Alpha' }));
+    render(<TodoTree />);
+    fireEvent.pointerEnter(bodyOf('Alpha'), { pointerType: 'mouse' });
+    await userEvent.click(screen.getByRole('button', { name: 'Delete Alpha' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.getByRole('treeitem', { name: 'Alpha' })).not.toHaveAttribute('data-hovered');
+    expect(screen.queryByRole('button', { name: 'Edit Alpha' })).toBeNull();
+  });
+
+  it('forgets the hover when its unsaved-changes prompt closes', async () => {
+    seed(mk('a', null, { title: 'Alpha' }));
+    render(<TodoTree />);
+    fireEvent.pointerEnter(bodyOf('Alpha'), { pointerType: 'mouse' });
+    await userEvent.click(screen.getByRole('button', { name: 'Edit Alpha' }));
+    await userEvent.type(screen.getByLabelText('Title'), '!');
+    await userEvent.keyboard('{Escape}');
+    await userEvent.click(screen.getByRole('button', { name: 'Keep editing' }));
+
+    expect(screen.getByRole('form', { name: 'Edit Alpha' })).toBeInTheDocument();
+    expect(screen.getByRole('treeitem', { name: 'Alpha' })).not.toHaveAttribute('data-hovered');
+  });
+
   it('reveals the actions on a mouse hover without selecting the item', () => {
     seed(mk('a', null, { title: 'Alpha' }));
     render(<TodoTree />);

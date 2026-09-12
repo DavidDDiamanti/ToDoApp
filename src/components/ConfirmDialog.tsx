@@ -48,6 +48,11 @@ export function ConfirmDialog({ heading, body, primary, extra, secondary }: Conf
 
   useEffect(() => {
     const onDocumentKeyDown = (e: KeyboardEvent) => {
+      // The Enter that raised this dialog may still be held; its repeats must not press the focused button.
+      if (e.key === 'Enter' && e.repeat) {
+        e.preventDefault();
+        return;
+      }
       if (e.key !== 'Escape') return;
       e.stopPropagation();
       e.preventDefault();

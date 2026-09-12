@@ -214,6 +214,28 @@ describe('uiStore', () => {
   });
 });
 
+describe('dropNext', () => {
+  it('forgets a pending next editor that names the id', () => {
+    const store = createUiStore();
+    store.getState().requestOpen(editAlpha);
+    store.getState().setDirty(true);
+    store.getState().requestOpen(editBeta);
+    store.getState().dropNext('beta');
+    expect(store.getState().pendingClose).toEqual({ next: null });
+  });
+
+  it('leaves a next editor for another id, and a missing prompt, alone', () => {
+    const store = createUiStore();
+    store.getState().dropNext('beta');
+    expect(store.getState().pendingClose).toBeNull();
+    store.getState().requestOpen(editAlpha);
+    store.getState().setDirty(true);
+    store.getState().requestOpen(addAlpha);
+    store.getState().dropNext('beta');
+    expect(store.getState().pendingClose).toEqual({ next: addAlpha });
+  });
+});
+
 describe('resolvePending', () => {
   it('opens the pending next editor and clears dirtiness and the prompt', () => {
     const store = createUiStore();

@@ -263,6 +263,7 @@ Requested after v3, still before the first deployment. Decisions were taken with
 - Hovering does not select the item. Exactly one item is selected app-wide; hover is per item and purely visual.
 - No buttons appear on rows a drag crosses, and the dragged row hides its own buttons for the length of the drag; they return on the drop, because the pointer is still over the row. A row that moves without a pointer event (a keyboard move) forgets its hover so buttons never stick to a row that is no longer under the pointer.
 - The buttons stay out of the DOM when hidden, so they are never in the tab order. Keyboard users select the item (Space on the title) to reach them.
+- An item's own dialogs (delete, unsaved changes) are DOM descendants of its body, so hover is not tracked while one is up and is forgotten when it closes; the next mouse move re-enters normally. State resets keyed on prop changes (position, dialog closing) happen during render, not in effects.
 
 ### 14.2 Selection and Enter
 
@@ -278,13 +279,13 @@ Requested after v3, still before the first deployment. Decisions were taken with
 - A press on any item body is an ordinary interaction (show details, tick, expand, move, select) and never asks to close an open editor, even a changed one. Only presses on chrome and empty space, outside every item body and not on the editor itself or its toggle, request a close.
 - Pressing a different item's Edit or Add item under button still displaces the open editor through the store, with the prompt if it has changes.
 - Consequences: starting a drag on an item while a clean root editor is open leaves that editor open; a delete dialog can open over an editor of another item.
-- Any open dialog still blocks presses outright. Grip presses are still never a dismissal.
+- Any open dialog still blocks presses outright. Grip presses are still never a dismissal. An outside press that raises the prompt is cancelled (`preventDefault` on the pointerdown) so the following compat mouse events cannot move focus away from the prompt's Save button.
 
 ### 14.4 The unsaved-changes prompt (supersedes "Discard changes?" in 13.1)
 
 - Every close request on an editor with changes (toggle button, Cancel, Escape, outside press, displacement) opens the "Unsaved changes" dialog with three buttons, in order: the editor's submit label (Save changes or Add item, focused by default), Discard, Keep editing.
 - Save validates like the form: with an empty title nothing is saved, the prompt closes, the editor stays open with "Title is required" and focus on the title. With a valid title the values are saved, then whatever the close request wanted happens (close, or open the requested editor).
-- Discard and Keep editing behave as before. Escape in the prompt is Keep editing. Store: `resolvePending` applies the remembered next editor and clears the prompt; `confirmDiscard` is now an alias of it.
+- Discard and Keep editing behave as before. Escape in the prompt is Keep editing, and a held Enter's repeats never press the focused button. Store: `resolvePending` applies the remembered next editor and clears the prompt; `confirmDiscard` is now an alias of it. When Save or Discard opens a remembered child editor, its collapsed parent is expanded just as a direct Add would (`revealAdd`). An item that unmounts while it is the remembered next editor drops itself from the prompt (`dropNext`), so the prompt then simply closes the editor.
 
 ### 14.5 Spacing
 

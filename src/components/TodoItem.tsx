@@ -41,11 +41,37 @@ export function TodoItem({ todo, map, depth, tree }: Props) {
   const dropZone = useDragStore((s) => (s.indicator?.targetId === todo.id ? s.indicator.zone : null));
   const isActive = useUiStore((s) => s.activeItemId === todo.id);
   const editorKind = useUiStore((s) => editorKindFor(s.openEditor, todo.id));
+  const prompting = useUiStore((s) => s.pendingClose !== null && editorKindFor(s.openEditor, todo.id) !== null);
   const [hovered, setHovered] = useState(false);
-  // The dragged row hides its own buttons for the length of the drag; they return on the drop.
-  const showHover = hovered && !isDragging;
   const [showDetails, setShowDetails] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  // This item's dialogs are DOM descendants of its body, so their backdrop counts as "inside"
+  // for pointer enter and leave. Hover is not tracked while one is up, and is forgotten when it
+  // closes, because the pointer may be anywhere by then and no leave will ever fire for it.
+  const dialogUp = confirmingDelete || prompting;
+  // The dragged row hides its own buttons for the length of the drag; they return on the drop.
+  const showHover = hovered && !isDragging;
+
+  // State resets keyed on prop changes happen during render (React's "adjusting state" pattern),
+  // not in effects. A keyboard move lands the row somewhere else without any pointer event, so
+  // the hover would otherwise stick to a row that is no longer under the pointer. The row's own
+  // drop among its siblings is the exception: it moves the row to where the pointer already is,
+  // so the hover must survive it (a drop into another parent remounts the row anyway). The drop
+  // commits the move and ends the drag in one batch, hence the previous-render dragging check.
+  const position = `${todo.parent_id ?? ''}/${todo.sort_order}`;
+  const [prevPosition, setPrevPosition] = useState(position);
+  const [prevDragging, setPrevDragging] = useState(isDragging);
+  const [prevDialogUp, setPrevDialogUp] = useState(dialogUp);
+  if (isDragging !== prevDragging) setPrevDragging(isDragging);
+  if (dialogUp !== prevDialogUp) {
+    setPrevDialogUp(dialogUp);
+    if (!dialogUp) setHovered(false);
+  }
+  if (position !== prevPosition) {
+    setPrevPosition(position);
+    const justDropped = prevDragging && !isDragging;
+    if (!isDragging && !justDropped) setHovered(false);
+  }
   const handleRef = useRef<HTMLButtonElement>(null);
 
   const children = visibleChildren(map, todo.id, hideCompleted);
@@ -75,23 +101,13 @@ export function TodoItem({ todo, map, depth, tree }: Props) {
 
   useEffect(
     () => () => {
-      if (editorKindFor(useUiStore.getState().openEditor, todo.id) !== null) useUiStore.getState().closeEditor();
+      const ui = useUiStore.getState();
+      if (editorKindFor(ui.openEditor, todo.id) !== null) ui.closeEditor();
+      // A prompt elsewhere may still remember this item as the editor to open next.
+      ui.dropNext(todo.id);
     },
     [todo.id],
   );
-
-  // A keyboard move lands the row somewhere else without any pointer event, so the hover would
-  // otherwise stick to a row that is no longer under the pointer. The row's own drop among its
-  // siblings is the exception: it moves the row to where the pointer already is, so the hover
-  // must survive it (a drop into another parent remounts the row, which resets hover anyway).
-  // The drop commits the move and ends the drag in one batch, hence the previous-render check.
-  const wasDragging = useRef(false);
-  useEffect(() => {
-    if (!isDragging && !wasDragging.current) setHovered(false);
-  }, [todo.parent_id, todo.sort_order]);
-  useEffect(() => {
-    wasDragging.current = isDragging;
-  }, [isDragging]);
 
   const onHandleKeyDown = (e: ReactKeyboardEvent<HTMLButtonElement>) => {
     if (!e.altKey) return;
@@ -152,8 +168,9 @@ export function TodoItem({ todo, map, depth, tree }: Props) {
         className={styles.body}
         data-item-body
         onPointerEnter={(e) => {
-          // Touch has no hover; a drag in progress must not flash buttons on rows it crosses.
-          if (e.pointerType === 'touch' || useDragStore.getState().draggingId !== null) return;
+          // Touch has no hover; a drag in progress must not flash buttons on rows it crosses;
+          // an open dialog's backdrop re-enters the body without the pointer being on the row.
+          if (e.pointerType === 'touch' || dialogUp || useDragStore.getState().draggingId !== null) return;
           setHovered(true);
         }}
         onPointerLeave={() => setHovered(false)}

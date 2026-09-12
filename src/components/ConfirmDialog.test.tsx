@@ -20,6 +20,13 @@ function renderDialog(overrides: Partial<React.ComponentProps<typeof ConfirmDial
 }
 
 describe('ConfirmDialog', () => {
+  it('swallows a repeated Enter so a held key cannot drive the focused button', () => {
+    const { primary } = renderDialog();
+    const notPrevented = fireEvent.keyDown(document, { key: 'Enter', repeat: true });
+    expect(notPrevented).toBe(false);
+    expect(primary.onClick).not.toHaveBeenCalled();
+  });
+
   it('renders heading, body and buttons in order', () => {
     renderDialog({ extra: { label: 'Keep children, move them up', onClick: vi.fn() } });
     const dialog = screen.getByRole('dialog', { name: "Delete 'Alpha'?" });

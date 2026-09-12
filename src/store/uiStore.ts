@@ -12,6 +12,8 @@ export interface UiState {
   requestClose(): void;
   resolvePending(): void;
   confirmDiscard(): void;
+  /** Forgets a remembered next editor that names this item (it is gone, so it cannot open). */
+  dropNext(id: string): void;
   keepEditing(): void;
   setDirty(dirty: boolean): void;
   closeEditor(): void;
@@ -68,6 +70,11 @@ export function createUiStore(): UseBoundStore<StoreApi<UiState>> {
     },
     confirmDiscard: () => get().resolvePending(),
     keepEditing: () => set({ pendingClose: null }),
+    dropNext: (id) => {
+      const { pendingClose } = get();
+      if (pendingClose === null || pendingClose.next === null || pendingClose.next.kind === 'root') return;
+      if (pendingClose.next.id === id) set({ pendingClose: { next: null } });
+    },
     setDirty: (dirty) => {
       const { openEditor, editorDirty } = get();
       if (openEditor === null || editorDirty === dirty) return;
