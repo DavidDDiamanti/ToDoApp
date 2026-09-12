@@ -542,6 +542,43 @@ describe('dragging from the item surface', () => {
     expect(vi.getTimerCount()).toBe(0);
   });
 
+  it('a tap right after a touch drop is not swallowed', () => {
+    fakeClock();
+    seedFlat();
+    render(<TodoTree getRect={getRect} />);
+    fireEvent.pointerDown(titleOf('a'), TOUCH_DOWN);
+    act(() => {
+      vi.advanceTimersByTime(350);
+    });
+    fireEvent.pointerMove(window, { pointerId: 1, clientX: 100, clientY: 80, pointerType: 'touch' });
+    fireEvent.pointerUp(window, { pointerId: 1, clientX: 100, clientY: 80, pointerType: 'touch' });
+
+    // Within the 400 ms bound, a plain tap on another title: press, release, then the tap's click.
+    act(() => {
+      vi.advanceTimersByTime(150);
+    });
+    fireEvent.pointerDown(titleOf('c'), { ...TOUCH_DOWN, pointerId: 2 });
+    fireEvent.pointerUp(window, { pointerId: 2, clientX: 100, clientY: 10, pointerType: 'touch' });
+    fireEvent.click(titleOf('c'));
+
+    expect(titleOf('c')).toHaveAttribute('aria-expanded', 'true');
+  });
+
+  it('a window blur during a drag cancels it without arming the click swallower', () => {
+    fakeClock();
+    seedFlat();
+    const add = vi.spyOn(window, 'addEventListener');
+    render(<TodoTree getRect={getRect} />);
+    fireEvent.pointerDown(titleOf('a'), MOUSE_DOWN);
+    fireEvent.pointerMove(window, { pointerId: 1, clientX: 100, clientY: 80, pointerType: 'mouse', buttons: 1 });
+    expect(item('a')).toHaveAttribute('data-dragging', 'true');
+
+    fireEvent.blur(window);
+
+    expect(item('a')).not.toHaveAttribute('data-dragging');
+    expect(counts(add, ['click']).click).toBe(0);
+  });
+
   it('a touch drag that ends without a click leaves no listener armed', () => {
     fakeClock();
     seedFlat();

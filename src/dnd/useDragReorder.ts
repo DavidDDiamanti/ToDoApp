@@ -197,8 +197,10 @@ export function useDragReorder(opts: Options): DragStarters {
         }
         // The click this release fires has not been dispatched yet: arm the swallower for it
         // and keep it through `finish`.
-        if (session.active && !session.fromHandle) armClickSwallower();
-        finish(true);
+        // A pending-only release (a tap) must not keep a swallower armed by an earlier drop.
+        const armed = session.active && !session.fromHandle;
+        if (armed) armClickSwallower();
+        finish(armed);
       };
       const onPointerCancel = (ev: PointerEvent) => {
         if (sessionRef.current === null) return;
@@ -227,7 +229,8 @@ export function useDragReorder(opts: Options): DragStarters {
         cancelWhileDown();
       };
       const onWindowBlur = () => {
-        cancelWhileDown();
+        // Losing the window means the release lands outside the page: no click follows, nothing to swallow.
+        finish();
       };
 
       sessionRef.current = {
