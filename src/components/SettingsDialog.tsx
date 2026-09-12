@@ -56,10 +56,11 @@ export function SettingsDialog({ onClose }: SettingsDialogProps) {
             className={styles.secondary}
             title={TIP.useDevice}
             onClick={() => {
-              setTheme('system');
               // This button unmounts on the click; without a new home, focus would fall to the
-              // body, outside the Tab trap.
+              // body, outside the Tab trap. Focus first, so the order holds even if the store
+              // write ever flushed synchronously.
               switchRef.current?.focus();
+              setTheme('system');
             }}
           >
             Use device setting

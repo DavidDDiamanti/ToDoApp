@@ -29,6 +29,11 @@ beforeEach(() => {
 });
 
 describe('hover text', () => {
+  it('titles the sync status with its text, since narrow screens show only its dot', () => {
+    render(<Toolbar />);
+    expect(screen.getByText('Synced').closest('[data-state]')).toHaveAttribute('title', 'Synced');
+  });
+
   beforeEach(async () => {
     seed(mk('a', null, { title: 'Alpha' }), mk('b', 'a', { title: 'Beta' }));
     render(<><Toolbar /><TodoTree /></>);

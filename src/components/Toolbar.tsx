@@ -33,7 +33,7 @@ export function Toolbar() {
     <header className={styles.bar}>
       <div className={styles.row}>
         <h1 className={styles.brand}>Todo</h1>
-        <span className={styles.status} data-state={sync} aria-live="polite"><span className={styles.statusText}>{LABELS[sync]}</span></span>
+        <span className={styles.status} data-state={sync} aria-live="polite" title={LABELS[sync]}><span className={styles.statusText}>{LABELS[sync]}</span></span>
         <label className={styles.toggle}>
           <input type="checkbox" checked={hideCompleted} onChange={(e) => setHideCompleted(e.target.checked)} aria-label="Hide completed" title={TIP.hideCompleted} />
           <span>Hide completed</span>
