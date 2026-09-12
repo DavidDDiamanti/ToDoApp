@@ -287,6 +287,38 @@ describe('hover', () => {
     expect(screen.getByRole('treeitem', { name: 'Alpha' })).not.toHaveAttribute('data-hovered');
   });
 
+  it('hides the actions of the dragged row for the length of its own drag', () => {
+    seed(mk('a', null, { title: 'Alpha' }));
+    render(<TodoTree />);
+    fireEvent.pointerEnter(bodyOf('Alpha'), { pointerType: 'mouse' });
+    expect(screen.getByRole('button', { name: 'Edit Alpha' })).toBeInTheDocument();
+
+    act(() => { useDragStore.getState().start('a'); });
+    expect(screen.queryByRole('button', { name: 'Edit Alpha' })).toBeNull();
+    expect(screen.getByRole('treeitem', { name: 'Alpha' })).not.toHaveAttribute('data-hovered');
+
+    // The pointer never left the row, so the drop reveals the buttons again.
+    act(() => { useDragStore.getState().end(); });
+    expect(screen.getByRole('button', { name: 'Edit Alpha' })).toBeInTheDocument();
+  });
+
+  it('forgets the hover when the item moves without a pointer event', () => {
+    const alpha = mk('a', null, { title: 'Alpha' });
+    seed(alpha, mk('b', null, { title: 'Beta' }));
+    render(<TodoTree />);
+    fireEvent.pointerEnter(bodyOf('Alpha'), { pointerType: 'mouse' });
+    expect(screen.getByRole('button', { name: 'Edit Alpha' })).toBeInTheDocument();
+
+    // A keyboard move or a drop lands the row somewhere else; no pointerleave fires for that.
+    // Braces matter: the persisted store returns a thenable from set, and act() would go async on it.
+    act(() => {
+      useTodoStore.getState().upsertTodo({ ...alpha, sort_order: alpha.sort_order + 10 }, false);
+    });
+
+    expect(screen.queryByRole('button', { name: 'Edit Alpha' })).toBeNull();
+    expect(screen.getByRole('treeitem', { name: 'Alpha' })).not.toHaveAttribute('data-hovered');
+  });
+
   it('keeps the actions on a selected item after the pointer leaves', async () => {
     seed(mk('a', null, { title: 'Alpha' }));
     render(<TodoTree />);

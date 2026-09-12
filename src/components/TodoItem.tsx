@@ -41,6 +41,8 @@ export function TodoItem({ todo, map, depth, tree }: Props) {
   const isActive = useUiStore((s) => s.activeItemId === todo.id);
   const editorKind = useUiStore((s) => editorKindFor(s.openEditor, todo.id));
   const [hovered, setHovered] = useState(false);
+  // The dragged row hides its own buttons for the length of the drag; hover resumes on the drop.
+  const showHover = hovered && !isDragging;
   const [showDetails, setShowDetails] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const handleRef = useRef<HTMLButtonElement>(null);
@@ -76,6 +78,12 @@ export function TodoItem({ todo, map, depth, tree }: Props) {
     },
     [todo.id],
   );
+
+  // A keyboard move or a drop lands the row somewhere else without any pointer event, so the
+  // hover would otherwise stick to a row that is no longer under the pointer.
+  useEffect(() => {
+    setHovered(false);
+  }, [todo.parent_id, todo.sort_order]);
 
   const onHandleKeyDown = (e: ReactKeyboardEvent<HTMLButtonElement>) => {
     if (!e.altKey) return;
@@ -125,7 +133,7 @@ export function TodoItem({ todo, map, depth, tree }: Props) {
       aria-expanded={hasChildren ? !collapsed : undefined}
       data-overdue={overdue ? 'true' : undefined}
       data-active={isActive ? 'true' : undefined}
-      data-hovered={hovered ? 'true' : undefined}
+      data-hovered={showHover ? 'true' : undefined}
       data-completed={todo.completed ? 'true' : undefined}
       data-dragging={isDragging ? 'true' : undefined}
       data-drop={dropZone ?? undefined}
@@ -208,7 +216,7 @@ export function TodoItem({ todo, map, depth, tree }: Props) {
             </button>
           ) : null}
 
-          {isActive || hovered ? (
+          {isActive || showHover ? (
             <div className={styles.actions}>
               <button
                 type="button"
