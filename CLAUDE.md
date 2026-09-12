@@ -13,8 +13,8 @@ Nested, colour-coded todo PWA. Vite + React 19 + TypeScript, Zustand persisted t
 - Timestamps are ISO strings; compare with `Date.parse`.
 - UI copy in sentence case. Touch targets 44px. SVG icons with labels. Respect reduced motion.
 - Design tokens in `src/design/tokens.css`; item colours (`--todo-*`) are separate from chrome colours.
-- Global listeners live in four hooks plus one scoped site: useSync (online/visibilitychange/interval), useDragReorder (window, during a drag), useOutsidePress (document pointerdown, mounted in Shell), useEnterToCreate (document keydown, mounted in Shell), and ConfirmDialog (document keydown while a dialog is open).
-- UI-only state (active item, open editor, discard prompt) lives in src/store/uiStore.ts and is never persisted.
+- Global listeners live in four hooks plus one scoped site: useSync (online/visibilitychange/interval), useDragReorder (window, during a drag), useOutsidePress (document pointerdown, mounted in Shell), useEnterToCreate (document keydown, mounted in Shell), and DialogFrame (document keydown while a dialog is open; ConfirmDialog and SettingsDialog build on it).
+- UI-only state (active item, open editor, discard prompt) lives in src/store/uiStore.ts and is never persisted. Persisted preferences (theme, gap) live in src/store/settingsStore.ts under the localStorage key todo-settings; only useApplySettings and the bootstrap script in index.html touch document.documentElement.
 
 ## Docs
 - Spec: `docs/superpowers/specs/2026-09-10-todo-app-design.md`

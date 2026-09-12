@@ -290,3 +290,33 @@ Requested after v3, still before the first deployment. Decisions were taken with
 ### 14.5 Spacing
 
 The gap between sibling items and between a parent body and its first child is the new `--gap-item` token, 6 px (1.5 × `--space-1`), up from 4 px.
+
+## 15. v5 settings (2026-09-12)
+
+Requested after v4. Decisions taken with the user: the theme follows the device until the user overrides it; settings are stored per device, not synced.
+
+### 15.1 Store
+
+`src/store/settingsStore.ts` is a persisted zustand store on `localStorage` under the key `todo-settings`, holding `theme` (`system`, `light`, `dark`; default `system`) and `gap` (`small`, `medium`, `large`; default `medium`). Stored values are validated on rehydration and unknown ones fall back to the defaults. `resolveTheme(theme, systemDark)` is the pure mapping to `light` or `dark`. It is separate from `uiStore`, which stays UI-only and unpersisted. The storage adapter never throws (`safeStorage`), so a browser with storage disabled still changes settings in memory for the session. The store carries no gap-scale constant: the 0.7 and 1.3 multiples live only in `tokens.css` (a constant shipped in the first commit was removed as a second source of truth).
+
+### 15.2 Applying the settings
+
+- `useApplySettings`, mounted once in `App` above the sign-in gate, reads the device preference through `useSystemDark` (one media-query subscription exposed as an external store; the settings dialog reads the same hook) and mirrors the store onto `<html>`: `data-theme` is set only for an explicit override and removed for `system`; `data-gap` is set only for `small` or `large`. It also updates both `theme-color` meta tags to the resolved background and restores their original values for `system`, and re-resolves on the device's `prefers-color-scheme` change while following the device.
+- `tokens.css` keeps the light palette on `:root`. The dark palette appears twice, byte for byte: under `@media (prefers-color-scheme: dark)` scoped to `:root:not([data-theme='light'])`, and under `:root[data-theme='dark']`; CSS has no way to share one block between a media query and an attribute selector, and a comment on each block points at the other. `color-scheme` follows the override so native controls match.
+- Gap: `--gap-item` is 6 px by default, `calc(6px * 0.7)` for small and `calc(6px * 1.3)` for large, keyed on `data-gap`.
+- A small inline script in `index.html`, before the module script, reads `todo-settings` from `localStorage` and sets the same attributes before first paint so a reload never flashes the wrong theme or spacing. It is wrapped in try/catch; the hook re-applies the truth after React mounts. No content security policy restricts inline scripts today; adding one later needs a hash or nonce for this script.
+
+### 15.3 Dialog frame
+
+`DialogFrame` holds what the confirm dialog used to own: the backdrop with press-then-click dismissal, `role="dialog"` with `aria-modal`, heading and description ids, the capture-phase document Escape, the held-Enter guard, the Tab trap and the StrictMode-safe focus restore. `ConfirmDialog` is now its body paragraph and button row on top of the frame; `SettingsDialog` is the second user.
+
+### 15.4 The wheel and the overlay
+
+- A gear button in the toolbar (accessible name Settings, hover text Settings, `aria-expanded`) opens the Settings dialog. Done, Escape and a backdrop press close it; focus returns to the wheel.
+- Night mode is a switch (`role="switch"`) whose position shows the resolved theme. While no override is set, "Following the device setting" is shown under it; once overridden, a "Use device setting" button clears the override.
+- Gap between items is a radio group: Small, Medium, Large. Done takes focus when the dialog opens, as the action button does in the confirm dialogs.
+- The wheel carries `data-keeps-editor`, which the outside-press hook treats like an editor toggle: pressing it never closes or prompts an open editor. It still deselects the selected item, like any press off an item. While the dialog is open, Enter, drags and outside presses are blocked by the existing dialog checks.
+
+### 15.5 Not covered
+
+Settings do not sync between devices. The PWA manifest colours stay light; the live `theme-color` meta follows the theme. Fractional gaps (4.2 px, 7.8 px) may round by a pixel between rows.

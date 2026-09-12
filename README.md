@@ -4,7 +4,7 @@ I built this to keep one todo list in sync between a Windows desktop and an Andr
 
 [screenshot placeholder: replace with screenshot.png]
 
-Each item has a title, description, one of eight colours, and an optional due date and time; a time without a date means its next occurrence. Completing a parent completes every descendant; reopening a child reopens its ancestors. Every delete asks first, and deleting a parent offers to keep its children. Hover or press an item for its buttons; Enter starts a new item, or a child of the selected one. One editor opens at a time, and leaving unsaved changes offers to save or discard them. Nesting is shaded and outlined by depth; every control has hover text. Drag an item by any part of it (hold first on touch), or use Alt with the arrow keys. It works offline, syncs when online, installs as a PWA, and signs in by emailed code.
+Each item has a title, description, colour, and optional due date and time; a time without a date means its next occurrence. Completing a parent completes every descendant; reopening a child reopens its ancestors. Every delete asks first, and deleting a parent offers to keep its children. Hover or press an item for its buttons; Enter starts a new item, or a child of the selected one. One editor opens at a time, and leaving unsaved changes offers to save or discard them. Nesting is shaded by depth. Drag any part of an item (hold first on touch), or use Alt with the arrow keys. A settings wheel offers night mode and three gap sizes, saved per device. It works offline, syncs online, installs as a PWA, and signs in by emailed code.
 
 ## How to run it
 
