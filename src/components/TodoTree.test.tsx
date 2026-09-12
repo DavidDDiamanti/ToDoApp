@@ -1,11 +1,19 @@
-import { act, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TodoTree } from './TodoTree';
 import { useTodoStore } from '../store/todoStore';
 import { useUiStore } from '../store/uiStore';
+import { useDragStore } from '../dnd/dragStore';
 import { mk } from '../test/fixtures';
 import { pressTitle } from '../test/press';
+
+/** The body wrapper of an item: the hover surface, and everything but the item's children. */
+function bodyOf(title: string): HTMLElement {
+  const body = screen.getByRole('treeitem', { name: title }).querySelector('[data-item-body]');
+  if (!(body instanceof HTMLElement)) throw new Error(`no body for ${title}`);
+  return body;
+}
 
 function seed(...todos: ReturnType<typeof mk>[]) {
   const s = useTodoStore.getState();
@@ -133,6 +141,8 @@ describe('TodoTree', () => {
     seed(mk('a', null, { title: 'Alpha' }), mk('b', null, { title: 'Beta' }));
     render(<TodoTree />);
     await pressTitle('Alpha');
+    // A click leaves the simulated pointer over Alpha; a real one leaves on the way to Beta.
+    fireEvent.pointerLeave(bodyOf('Alpha'));
     await pressTitle('Beta');
     expect(screen.getByRole('button', { name: 'Edit Beta' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Edit Alpha' })).toBeNull();
@@ -212,5 +222,78 @@ describe('depth shading and the body wrapper', () => {
     expect(body.querySelector('.details')).not.toBeNull();
     expect(body.querySelector('[role="group"]')).toBeNull();
     expect(item.children[1]).toHaveAttribute('role', 'group');
+  });
+});
+
+describe('hover', () => {
+  afterEach(() => {
+    useDragStore.getState().end();
+  });
+
+  it('reveals the actions on a mouse hover without selecting the item', () => {
+    seed(mk('a', null, { title: 'Alpha' }));
+    render(<TodoTree />);
+    expect(screen.queryByRole('button', { name: 'Edit Alpha' })).toBeNull();
+
+    fireEvent.pointerEnter(bodyOf('Alpha'), { pointerType: 'mouse' });
+
+    expect(screen.getByRole('button', { name: 'Edit Alpha' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Add item under Alpha' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Delete Alpha' })).toBeInTheDocument();
+    expect(useUiStore.getState().activeItemId).toBeNull();
+    expect(screen.getByRole('treeitem', { name: 'Alpha' })).toHaveAttribute('data-hovered', 'true');
+  });
+
+  it('hides the actions again when the pointer leaves', () => {
+    seed(mk('a', null, { title: 'Alpha' }));
+    render(<TodoTree />);
+    fireEvent.pointerEnter(bodyOf('Alpha'), { pointerType: 'mouse' });
+    fireEvent.pointerLeave(bodyOf('Alpha'));
+
+    expect(screen.queryByRole('button', { name: 'Edit Alpha' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Add item under Alpha' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Delete Alpha' })).toBeNull();
+    expect(screen.getByRole('treeitem', { name: 'Alpha' })).not.toHaveAttribute('data-hovered');
+  });
+
+  it('ignores a touch pointer, which has no hover', () => {
+    seed(mk('a', null, { title: 'Alpha' }));
+    render(<TodoTree />);
+    fireEvent.pointerEnter(bodyOf('Alpha'), { pointerType: 'touch' });
+
+    expect(screen.queryByRole('button', { name: 'Edit Alpha' })).toBeNull();
+    expect(screen.getByRole('treeitem', { name: 'Alpha' })).not.toHaveAttribute('data-hovered');
+  });
+
+  it('does not flash the actions on rows a drag crosses', () => {
+    seed(mk('a', null, { title: 'Alpha' }));
+    render(<TodoTree />);
+    act(() => useDragStore.getState().start('other'));
+
+    fireEvent.pointerEnter(bodyOf('Alpha'), { pointerType: 'mouse' });
+
+    expect(screen.queryByRole('button', { name: 'Edit Alpha' })).toBeNull();
+    expect(screen.getByRole('treeitem', { name: 'Alpha' })).not.toHaveAttribute('data-hovered');
+  });
+
+  it('reveals only the hovered child, not its parent', () => {
+    seed(mk('a', null, { title: 'Alpha' }), mk('b', 'a', { title: 'Beta' }));
+    render(<TodoTree />);
+    fireEvent.pointerEnter(bodyOf('Beta'), { pointerType: 'mouse' });
+
+    expect(screen.getByRole('button', { name: 'Edit Beta' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Edit Alpha' })).toBeNull();
+    expect(screen.getByRole('treeitem', { name: 'Beta' })).toHaveAttribute('data-hovered', 'true');
+    expect(screen.getByRole('treeitem', { name: 'Alpha' })).not.toHaveAttribute('data-hovered');
+  });
+
+  it('keeps the actions on a selected item after the pointer leaves', async () => {
+    seed(mk('a', null, { title: 'Alpha' }));
+    render(<TodoTree />);
+    await pressTitle('Alpha');
+    fireEvent.pointerLeave(bodyOf('Alpha'));
+
+    expect(useUiStore.getState().activeItemId).toBe('a');
+    expect(screen.getByRole('button', { name: 'Edit Alpha' })).toBeInTheDocument();
   });
 });

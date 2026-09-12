@@ -40,6 +40,7 @@ export function TodoItem({ todo, map, depth, tree }: Props) {
   const dropZone = useDragStore((s) => (s.indicator?.targetId === todo.id ? s.indicator.zone : null));
   const isActive = useUiStore((s) => s.activeItemId === todo.id);
   const editorKind = useUiStore((s) => editorKindFor(s.openEditor, todo.id));
+  const [hovered, setHovered] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const handleRef = useRef<HTMLButtonElement>(null);
@@ -124,13 +125,23 @@ export function TodoItem({ todo, map, depth, tree }: Props) {
       aria-expanded={hasChildren ? !collapsed : undefined}
       data-overdue={overdue ? 'true' : undefined}
       data-active={isActive ? 'true' : undefined}
+      data-hovered={hovered ? 'true' : undefined}
       data-completed={todo.completed ? 'true' : undefined}
       data-dragging={isDragging ? 'true' : undefined}
       data-drop={dropZone ?? undefined}
       className={styles.item}
       style={{ '--item-color': railColor, '--depth': depth } as CSSProperties}
     >
-      <div className={styles.body}>
+      <div
+        className={styles.body}
+        data-item-body
+        onPointerEnter={(e) => {
+          // Touch has no hover; a drag in progress must not flash buttons on rows it crosses.
+          if (e.pointerType === 'touch' || useDragStore.getState().draggingId !== null) return;
+          setHovered(true);
+        }}
+        onPointerLeave={() => setHovered(false)}
+      >
         <div className={styles.row} data-todo-id={todo.id} onPointerDown={onSurfacePointerDown}>
           <button
             type="button"
@@ -197,7 +208,7 @@ export function TodoItem({ todo, map, depth, tree }: Props) {
             </button>
           ) : null}
 
-          {isActive ? (
+          {isActive || hovered ? (
             <div className={styles.actions}>
               <button
                 type="button"

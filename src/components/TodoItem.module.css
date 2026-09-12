@@ -129,6 +129,7 @@
 .children { list-style: none; margin: 0; padding: var(--space-1) 0 0 var(--indent); }
 
 @media (max-width: 480px) {
-  .item[data-active='true'] > .body > .row { flex-wrap: wrap; }
+  .item[data-active='true'] > .body > .row,
+  .item[data-hovered='true'] > .body > .row { flex-wrap: wrap; }
   .actions { flex-basis: 100%; justify-content: flex-end; padding-left: var(--touch); }
 }
