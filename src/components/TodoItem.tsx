@@ -5,7 +5,7 @@ import { PALETTE } from '../lib/colors';
 import { buildChildrenMap, type ChildrenMap } from '../domain/tree';
 import { describePlacement, keyMovePlacement, type MoveKey } from '../domain/place';
 import { useDragStore } from '../dnd/dragStore';
-import { addTodo, editTodo, moveTodoTo, removeTodo, toggleTodo } from '../store/actions';
+import { addTodo, editTodo, moveTodoTo, openAddUnder, removeTodo, toggleTodo } from '../store/actions';
 import { useTodoStore } from '../store/todoStore';
 import { editorKindFor, useUiStore } from '../store/uiStore';
 import type { Todo } from '../types';
@@ -192,6 +192,14 @@ export function TodoItem({ todo, map, depth, tree }: Props) {
               setShowDetails((v) => !v);
               useUiStore.getState().setActive(todo.id);
             }}
+            onKeyDown={(e) => {
+              // Preventing the keydown suppresses the click the browser would synthesize, so Enter
+              // opens the child editor instead of toggling details; Space still toggles them.
+              if (e.key !== 'Enter' || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+              e.preventDefault();
+              useUiStore.getState().setActive(todo.id);
+              openAddUnder(todo.id);
+            }}
           >
             <span className={styles.title}>{todo.title}</span>
             {todo.due_date !== null ? (
@@ -236,13 +244,7 @@ export function TodoItem({ todo, map, depth, tree }: Props) {
                 title={TIP.add}
                 data-editor-toggle
                 aria-expanded={editorKind === 'add'}
-                onClick={() => {
-                  useUiStore.getState().requestOpen({ kind: 'add', id: todo.id });
-                  // requestOpen is a request: a discard prompt or a dirty editor can refuse it.
-                  // Only reveal the new child's editor when there is one to reveal.
-                  const opened = editorKindFor(useUiStore.getState().openEditor, todo.id) === 'add';
-                  if (opened && collapsed) toggleCollapsed(todo.id);
-                }}
+                onClick={() => openAddUnder(todo.id)}
               >
                 <PlusIcon />
               </button>

@@ -4,20 +4,23 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { MockInstance } from 'vitest';
 import { Toolbar } from './Toolbar';
 import { TodoTree } from './TodoTree';
+import { useDragStore } from '../dnd/dragStore';
 import { useTodoStore } from '../store/todoStore';
 import { useUiStore } from '../store/uiStore';
+import { useEnterToCreate } from '../hooks/useEnterToCreate';
 import { useOutsidePress } from '../hooks/useOutsidePress';
 import { mk } from '../test/fixtures';
 import { pressTitle } from '../test/press';
 
-/** The hook lives in Shell, which this harness does not render; mount it explicitly instead. */
-function OutsidePress() {
+/** The global input hooks live in Shell, which this harness does not render; mount them explicitly instead. */
+function GlobalInput() {
   useOutsidePress();
+  useEnterToCreate();
   return null;
 }
 
 function renderApp() {
-  return render(<><OutsidePress /><Toolbar /><TodoTree /></>);
+  return render(<><GlobalInput /><Toolbar /><TodoTree /></>);
 }
 
 function seed(...todos: ReturnType<typeof mk>[]) {
@@ -474,5 +477,136 @@ describe('dragging around an open editor', () => {
 
     expect(screen.getByRole('form', { name: 'New item' })).toBeInTheDocument();
     expect(screen.getByRole('treeitem', { name: 'Alpha' })).toHaveAttribute('data-dragging', 'true');
+  });
+});
+
+describe('Enter opens an editor', () => {
+  it('opens the New item editor and focuses the title when nothing is selected', () => {
+    seed(mk('a', null, { title: 'Alpha' }));
+    renderApp();
+
+    fireEvent.keyDown(document.body, { key: 'Enter' });
+
+    expect(screen.getByRole('form', { name: 'New item' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Title')).toHaveFocus();
+  });
+
+  it('opens the child editor of the selected item', async () => {
+    seed(mk('a', null, { title: 'Alpha' }));
+    renderApp();
+    await pressTitle('Alpha');
+
+    fireEvent.keyDown(document.body, { key: 'Enter' });
+
+    expect(screen.getByRole('form', { name: 'New item under Alpha' })).toBeInTheDocument();
+  });
+
+  it('expands a collapsed selected item and opens its child editor', async () => {
+    seed(mk('a', null, { title: 'Alpha' }), mk('b', 'a', { title: 'Beta' }));
+    act(() => {
+      useTodoStore.getState().toggleCollapsed('a');
+    });
+    renderApp();
+    await pressTitle('Alpha');
+    expect(useTodoStore.getState().collapsed.a).toBe(true);
+
+    fireEvent.keyDown(document.body, { key: 'Enter' });
+
+    // toggleCollapsed drops the key rather than storing false, so an expanded item has no entry.
+    expect(useTodoStore.getState().collapsed.a).toBeUndefined();
+    expect(screen.getByRole('treeitem', { name: 'Beta' })).toBeInTheDocument();
+    expect(screen.getByRole('form', { name: 'New item under Alpha' })).toBeInTheDocument();
+  });
+
+  it('changes nothing while an editor is already open', async () => {
+    seed(mk('a', null, { title: 'Alpha' }));
+    renderApp();
+    await userEvent.click(screen.getByRole('button', { name: 'New item' }));
+    const open = useUiStore.getState().openEditor;
+
+    fireEvent.keyDown(document.body, { key: 'Enter' });
+
+    expect(useUiStore.getState().openEditor).toBe(open);
+    expect(useUiStore.getState().pendingClose).toBeNull();
+    expect(screen.getAllByRole('form')).toHaveLength(1);
+  });
+
+  it('ignores Enter on a checkbox inside an item', () => {
+    seed(mk('a', null, { title: 'Alpha' }), mk('b', 'a', { title: 'Beta' }));
+    renderApp();
+    const box = screen.getByRole('checkbox', { name: 'Mark Beta complete' });
+    box.focus();
+
+    fireEvent.keyDown(box, { key: 'Enter' });
+
+    expect(screen.queryByRole('form')).toBeNull();
+    expect(useUiStore.getState().openEditor).toBeNull();
+  });
+
+  it('ignores a bare keydown on the New item button', () => {
+    seed(mk('a', null, { title: 'Alpha' }));
+    renderApp();
+    const button = screen.getByRole('button', { name: 'New item' });
+    button.focus();
+
+    fireEvent.keyDown(button, { key: 'Enter' });
+
+    expect(screen.queryByRole('form')).toBeNull();
+    expect(useUiStore.getState().openEditor).toBeNull();
+  });
+
+  it('opens the child editor from the title button without toggling details', async () => {
+    seed(mk('a', null, { title: 'Alpha' }));
+    renderApp();
+    await pressTitle('Alpha');
+    const title = titleOf('Alpha');
+    const expanded = title.getAttribute('aria-expanded');
+
+    // jsdom never synthesizes the click a real browser would; preventing the default is what stops it.
+    const notPrevented = fireEvent.keyDown(title, { key: 'Enter' });
+
+    expect(notPrevented).toBe(false);
+    expect(screen.getByRole('form', { name: 'New item under Alpha' })).toBeInTheDocument();
+    expect(titleOf('Alpha').getAttribute('aria-expanded')).toBe(expanded);
+    expect(useUiStore.getState().activeItemId).toBe('a');
+  });
+
+  it('ignores Enter with a modifier held', () => {
+    seed(mk('a', null, { title: 'Alpha' }));
+    renderApp();
+
+    fireEvent.keyDown(document.body, { key: 'Enter', shiftKey: true });
+    fireEvent.keyDown(document.body, { key: 'Enter', ctrlKey: true });
+
+    expect(screen.queryByRole('form')).toBeNull();
+  });
+
+  it('ignores Enter while a dialog is open', async () => {
+    seed(mk('a', null, { title: 'Alpha' }));
+    renderApp();
+    await pressTitle('Alpha');
+    await userEvent.click(screen.getByRole('button', { name: 'Delete Alpha' }));
+    expect(screen.getByRole('dialog', { name: "Delete 'Alpha'?" })).toBeInTheDocument();
+
+    fireEvent.keyDown(document.body, { key: 'Enter' });
+
+    expect(screen.queryByRole('form')).toBeNull();
+    expect(useUiStore.getState().openEditor).toBeNull();
+  });
+
+  it('ignores Enter during a drag', () => {
+    seed(mk('a', null, { title: 'Alpha' }));
+    renderApp();
+    act(() => {
+      useDragStore.getState().start('a');
+    });
+    try {
+      fireEvent.keyDown(document.body, { key: 'Enter' });
+      expect(screen.queryByRole('form')).toBeNull();
+    } finally {
+      act(() => {
+        useDragStore.getState().end();
+      });
+    }
   });
 });

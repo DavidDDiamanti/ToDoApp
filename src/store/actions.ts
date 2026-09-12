@@ -4,6 +4,7 @@ import { placeTodo, type Placement } from '../domain/place';
 import { buildChildrenMap } from '../domain/tree';
 import type { Todo } from '../types';
 import { useTodoStore } from './todoStore';
+import { editorKindFor, useUiStore } from './uiStore';
 
 let currentUserId = 'local';
 
@@ -49,4 +50,14 @@ export function moveTodoTo(id: string, target: Placement): boolean {
   if (patches.length === 0) return false;
   s.applyPatches(patches);
   return true;
+}
+
+/** Requests the child editor and, only if it really opened, reveals it under a collapsed parent. */
+export function openAddUnder(id: string): void {
+  const ui = useUiStore.getState();
+  ui.requestOpen({ kind: 'add', id });
+  // requestOpen is a request: a discard prompt or a dirty editor can refuse it.
+  if (editorKindFor(useUiStore.getState().openEditor, id) !== 'add') return;
+  const { collapsed, toggleCollapsed } = useTodoStore.getState();
+  if (collapsed[id] === true) toggleCollapsed(id);
 }
