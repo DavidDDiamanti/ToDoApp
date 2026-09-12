@@ -6,13 +6,13 @@ import { Toolbar } from './Toolbar';
 import { TodoTree } from './TodoTree';
 import { useTodoStore } from '../store/todoStore';
 import { useUiStore } from '../store/uiStore';
-import { useClickOutsideEditor } from '../hooks/useClickOutsideEditor';
+import { useOutsidePress } from '../hooks/useOutsidePress';
 import { mk } from '../test/fixtures';
 import { pressTitle } from '../test/press';
 
 /** The hook lives in Shell, which this harness does not render; mount it explicitly instead. */
 function OutsidePress() {
-  useClickOutsideEditor();
+  useOutsidePress();
   return null;
 }
 
@@ -167,7 +167,7 @@ describe('pressing outside the editor', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Edit Alpha' }));
     expect(screen.getByRole('form', { name: 'Edit Alpha' })).toBeInTheDocument();
 
-    fireEvent.pointerDown(screen.getByRole('checkbox', { name: 'Mark Beta complete' }));
+    fireEvent.pointerDown(screen.getByRole('heading', { name: 'Todo' }));
 
     expect(screen.queryByRole('form', { name: 'Edit Alpha' })).toBeNull();
     expect(useUiStore.getState().openEditor).toBeNull();
@@ -180,7 +180,7 @@ describe('pressing outside the editor', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Edit Alpha' }));
     await userEvent.type(screen.getByLabelText('Title'), '!');
 
-    fireEvent.pointerDown(screen.getByRole('checkbox', { name: 'Mark Beta complete' }));
+    fireEvent.pointerDown(screen.getByRole('heading', { name: 'Todo' }));
 
     const dialog = screen.getByRole('dialog', { name: 'Discard changes?' });
     expect(screen.getByRole('form', { name: 'Edit Alpha' })).toBeInTheDocument();
@@ -276,17 +276,101 @@ describe('pressing outside the editor', () => {
     expect(screen.getByRole('form', { name: 'Edit Alpha' })).toBeInTheDocument();
     expect(useUiStore.getState().pendingClose).not.toBeNull();
   });
-});
 
-describe('Delete while a prompt is up', () => {
-  it('does not open a delete dialog on top of the discard prompt', async () => {
-    seed(mk('a', null, { title: 'Alpha' }), mk('b', null, { title: 'Beta' }));
+  it('a press on another item toggles it and leaves a clean editor open', async () => {
+    seed(mk('a', null, { title: 'Alpha' }), mk('b', 'a', { title: 'Beta' }));
+    renderApp();
+    await pressTitle('Alpha');
+    await userEvent.click(screen.getByRole('button', { name: 'Edit Alpha' }));
+    const before = useUiStore.getState().openEditor;
+
+    const box = screen.getByRole('checkbox', { name: 'Mark Beta complete' });
+    fireEvent.pointerDown(box);
+    fireEvent.click(box);
+
+    expect(useTodoStore.getState().todos.b.completed).toBe(true);
+    expect(screen.getByRole('form', { name: 'Edit Alpha' })).toBeInTheDocument();
+    expect(useUiStore.getState().openEditor).toBe(before);
+  });
+
+  it('a press on another item never asks about a dirty editor', async () => {
+    seed(mk('a', null, { title: 'Alpha' }), mk('b', 'a', { title: 'Beta' }));
     renderApp();
     await pressTitle('Alpha');
     await userEvent.click(screen.getByRole('button', { name: 'Edit Alpha' }));
     await userEvent.type(screen.getByLabelText('Title'), '!');
 
     await pressTitle('Beta');
+
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Hide details for Beta' })).toBeInTheDocument();
+    expect(useUiStore.getState().activeItemId).toBe('b');
+    expect(screen.getByRole('form', { name: 'Edit Alpha' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Title')).toHaveValue('Alpha!');
+    expect(useUiStore.getState().editorDirty).toBe(true);
+  });
+
+  it('a press on the toolbar clears the active item', async () => {
+    seed(mk('a', null, { title: 'Alpha' }));
+    renderApp();
+    await pressTitle('Alpha');
+    expect(useUiStore.getState().activeItemId).toBe('a');
+
+    fireEvent.pointerDown(screen.getByRole('heading', { name: 'Todo' }));
+
+    expect(useUiStore.getState().activeItemId).toBeNull();
+  });
+
+  it('a press inside the item own editor keeps the item selected', async () => {
+    seed(mk('a', null, { title: 'Alpha' }));
+    renderApp();
+    await pressTitle('Alpha');
+    await userEvent.click(screen.getByRole('button', { name: 'Edit Alpha' }));
+
+    fireEvent.pointerDown(screen.getByLabelText('Title'));
+
+    expect(useUiStore.getState().activeItemId).toBe('a');
+    expect(screen.getByRole('form', { name: 'Edit Alpha' })).toBeInTheDocument();
+  });
+
+  it('a press in the root editor clears the active item and leaves the editor open', async () => {
+    seed(mk('a', null, { title: 'Alpha' }));
+    renderApp();
+    await userEvent.click(screen.getByRole('button', { name: 'New item' }));
+    await pressTitle('Alpha');
+    expect(useUiStore.getState().activeItemId).toBe('a');
+
+    fireEvent.pointerDown(screen.getByLabelText('Title'));
+
+    expect(useUiStore.getState().activeItemId).toBeNull();
+    expect(screen.getByRole('form', { name: 'New item' })).toBeInTheDocument();
+  });
+
+  it('a press on the toolbar changes nothing while a dialog is open', async () => {
+    seed(mk('a', null, { title: 'Alpha' }));
+    renderApp();
+    await pressTitle('Alpha');
+    await userEvent.click(screen.getByRole('button', { name: 'Add item under Alpha' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Delete Alpha' }));
+    expect(screen.getByRole('dialog', { name: "Delete 'Alpha'?" })).toBeInTheDocument();
+    const editor = useUiStore.getState().openEditor;
+
+    fireEvent.pointerDown(screen.getByRole('heading', { name: 'Todo' }));
+
+    expect(useUiStore.getState().activeItemId).toBe('a');
+    expect(useUiStore.getState().openEditor).toBe(editor);
+  });
+});
+
+describe('Delete while a prompt is up', () => {
+  it('does not open a delete dialog on top of the discard prompt', async () => {
+    seed(mk('a', null, { title: 'Alpha' }), mk('b', null, { title: 'Beta' }));
+    renderApp();
+    await userEvent.click(screen.getByRole('button', { name: 'New item' }));
+    await userEvent.type(screen.getByLabelText('Title'), 'x');
+
+    await pressTitle('Beta');
+    await userEvent.click(screen.getByRole('button', { name: 'Edit Beta' }));
     expect(screen.getByRole('dialog', { name: 'Discard changes?' })).toBeInTheDocument();
 
     const del = screen.getByRole('button', { name: 'Delete Beta' });
@@ -307,6 +391,7 @@ describe('pressing a dialog backdrop', () => {
     await userEvent.type(screen.getByLabelText('Title'), 'x');
 
     await pressTitle('Alpha');
+    await userEvent.click(screen.getByRole('button', { name: 'Edit Alpha' }));
     const prompt = screen.getByRole('dialog', { name: 'Discard changes?' });
     const pending = useUiStore.getState().pendingClose;
 
@@ -346,6 +431,7 @@ describe('Add item under a collapsed item', () => {
     await userEvent.type(screen.getByLabelText('Title'), 'x');
 
     await pressTitle('Alpha');
+    await userEvent.click(screen.getByRole('button', { name: 'Add item under Alpha' }));
     expect(screen.getByRole('dialog', { name: 'Discard changes?' })).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('button', { name: 'Add item under Alpha' }));
@@ -365,10 +451,10 @@ describe('dragging around an open editor', () => {
     await pressTitle('Alpha');
     await userEvent.click(screen.getByRole('button', { name: 'Edit Alpha' }));
     await userEvent.type(screen.getByLabelText('Title'), '!');
-
-    fireEvent.pointerDown(titleOf('Beta'), MOUSE_DOWN);
+    await userEvent.click(screen.getByRole('button', { name: 'New item' }));
     expect(screen.getByRole('dialog', { name: 'Discard changes?' })).toBeInTheDocument();
 
+    fireEvent.pointerDown(titleOf('Beta'), MOUSE_DOWN);
     mouseMove(20);
 
     expect(screen.getByRole('treeitem', { name: 'Beta' })).not.toHaveAttribute('data-dragging');
@@ -377,7 +463,7 @@ describe('dragging around an open editor', () => {
     expect(screen.getAllByRole('dialog')).toHaveLength(1);
   });
 
-  it('closes a clean root editor and still starts the drag that closed it', async () => {
+  it('leaves a clean root editor open and still starts the drag', async () => {
     seed(mk('a', null, { title: 'Alpha' }), mk('b', null, { title: 'Beta' }));
     renderApp();
     await userEvent.click(screen.getByRole('button', { name: 'New item' }));
@@ -386,7 +472,7 @@ describe('dragging around an open editor', () => {
     fireEvent.pointerDown(titleOf('Alpha'), MOUSE_DOWN);
     mouseMove(20);
 
-    expect(screen.queryByRole('form', { name: 'New item' })).toBeNull();
+    expect(screen.getByRole('form', { name: 'New item' })).toBeInTheDocument();
     expect(screen.getByRole('treeitem', { name: 'Alpha' })).toHaveAttribute('data-dragging', 'true');
   });
 });

@@ -1,0 +1,30 @@
+import { useEffect } from 'react';
+import { useUiStore } from '../store/uiStore';
+
+/**
+ * Handles presses that land away from what they would otherwise act on. Presses off every item
+ * body deselect the active item; presses on any item body are ordinary interactions (expand,
+ * tick, move), not dismissals, so only chrome and empty space ask to close an open editor.
+ * Listens on `document` (not `window`) so it does not interfere with the drag-reorder
+ * listener-count tests. Mounted once, in `Shell`, so it is live before the store finishes hydrating.
+ */
+export function useOutsidePress(): void {
+  useEffect(() => {
+    const onDown = (e: PointerEvent) => {
+      // Any open dialog owns the pointer: its backdrop is outside everything but changes nothing.
+      if (document.querySelector('[role="dialog"]') !== null) return;
+      const s = useUiStore.getState();
+      const t = e.target;
+      const el = t instanceof Element ? t : null;
+      const insideItem = el !== null && el.closest('[data-item-body]') !== null;
+      if (!insideItem && s.activeItemId !== null) s.setActive(null);
+      if (s.openEditor === null) return;
+      // A grip press is a move gesture, not a dismissal: the row it belongs to may be the one
+      // being edited, and closing the editor underneath the pointer loses the draft.
+      if (el !== null && el.closest('[data-editor-root], [data-editor-toggle], [data-drag-handle], [data-item-body]') !== null) return;
+      s.requestClose();
+    };
+    document.addEventListener('pointerdown', onDown);
+    return () => document.removeEventListener('pointerdown', onDown);
+  }, []);
+}
