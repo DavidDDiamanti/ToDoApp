@@ -78,6 +78,23 @@ afterEach(() => {
 });
 
 describe('pointer drag and drop', () => {
+  it('hides the hovered row buttons during its drag and shows them again after the real drop', () => {
+    seedFlat();
+    render(<TodoTree getRect={getRect} />);
+    const body = item('a').querySelector('[data-item-body]');
+    if (!(body instanceof HTMLElement)) throw new Error('no body');
+    fireEvent.pointerEnter(body, { pointerType: 'mouse' });
+    expect(screen.getByRole('button', { name: 'Edit a' })).toBeInTheDocument();
+
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Move a' }), { button: 0, pointerId: 1, clientY: 10 });
+    fireEvent.pointerMove(window, { pointerId: 1, clientY: 80 });
+    expect(screen.queryByRole('button', { name: 'Edit a' })).toBeNull();
+
+    fireEvent.pointerUp(window, { pointerId: 1, clientY: 80 });
+    expect(rootOrder()).toEqual(['b', 'a', 'c']);
+    expect(screen.getByRole('button', { name: 'Edit a' })).toBeInTheDocument();
+  });
+
   it('marks the dragged row and shows an after indicator in a bottom band', () => {
     seedFlat();
     render(<TodoTree getRect={getRect} />);

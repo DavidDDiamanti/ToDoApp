@@ -8,6 +8,7 @@ import { useDragStore } from '../dnd/dragStore';
 import { addTodo, editTodo, moveTodoTo, openAddUnder, removeTodo, toggleTodo } from '../store/actions';
 import { useTodoStore } from '../store/todoStore';
 import { editorKindFor, useUiStore } from '../store/uiStore';
+import { enterBlocked } from '../hooks/useEnterToCreate';
 import type { Todo } from '../types';
 import { ChevronIcon, GripIcon, PencilIcon, PlusIcon, TrashIcon } from './icons';
 import { TIP } from './tips';
@@ -80,8 +81,9 @@ export function TodoItem({ todo, map, depth, tree }: Props) {
   );
 
   // A keyboard move lands the row somewhere else without any pointer event, so the hover would
-  // otherwise stick to a row that is no longer under the pointer. The row's own drop is the
-  // exception: it moves the row to where the pointer already is, so the hover must survive it.
+  // otherwise stick to a row that is no longer under the pointer. The row's own drop among its
+  // siblings is the exception: it moves the row to where the pointer already is, so the hover
+  // must survive it (a drop into another parent remounts the row, which resets hover anyway).
   // The drop commits the move and ends the drag in one batch, hence the previous-render check.
   const wasDragging = useRef(false);
   useEffect(() => {
@@ -201,7 +203,10 @@ export function TodoItem({ todo, map, depth, tree }: Props) {
             onKeyDown={(e) => {
               // Preventing the keydown suppresses the click the browser would synthesize, so Enter
               // opens the child editor instead of toggling details; Space still toggles them.
-              if (e.key !== 'Enter' || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+              if (e.key !== 'Enter' || e.repeat || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+              // Same guards as the document listener; otherwise the press falls through to the
+              // native click, which just toggles the details as any press on an item would.
+              if (enterBlocked()) return;
               e.preventDefault();
               useUiStore.getState().setActive(todo.id);
               openAddUnder(todo.id);

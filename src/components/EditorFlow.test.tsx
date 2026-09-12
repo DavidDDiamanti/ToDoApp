@@ -481,6 +481,41 @@ describe('dragging around an open editor', () => {
 });
 
 describe('Enter opens an editor', () => {
+  it('Enter on a title while another editor has changes opens nothing and never asks', async () => {
+    seed(mk('a', null, { title: 'Alpha' }), mk('b', null, { title: 'Beta' }));
+    renderApp();
+    await pressTitle('Alpha');
+    await userEvent.click(screen.getByRole('button', { name: 'Edit Alpha' }));
+    await userEvent.type(screen.getByLabelText('Title'), '!');
+
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Show details for Beta' }), { key: 'Enter' });
+
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.queryByRole('form', { name: 'New item under Beta' })).toBeNull();
+    expect(screen.getByRole('form', { name: 'Edit Alpha' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Title')).toHaveValue('Alpha!');
+  });
+
+  it('Enter on the title of the item whose child editor is open leaves it open', async () => {
+    seed(mk('a', null, { title: 'Alpha' }));
+    renderApp();
+    await pressTitle('Alpha');
+    await userEvent.click(screen.getByRole('button', { name: 'Add item under Alpha' }));
+
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Hide details for Alpha' }), { key: 'Enter' });
+
+    expect(screen.getByRole('form', { name: 'New item under Alpha' })).toBeInTheDocument();
+  });
+
+  it('a held Enter (auto-repeat) opens nothing', () => {
+    seed(mk('a', null, { title: 'Alpha' }));
+    renderApp();
+
+    fireEvent.keyDown(document.body, { key: 'Enter', repeat: true });
+
+    expect(screen.queryByRole('form', { name: 'New item' })).toBeNull();
+  });
+
   it('opens the New item editor and focuses the title when nothing is selected', () => {
     seed(mk('a', null, { title: 'Alpha' }));
     renderApp();

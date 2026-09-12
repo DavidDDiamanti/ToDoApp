@@ -80,6 +80,11 @@ export function TodoEditor({ initial, heading, submitLabel, onSave, now = defaul
   }
 
   function onKeyDown(e: KeyboardEvent<HTMLElement>) {
+    // The Enter that opened this editor may still be held; its repeats must not submit it.
+    if (e.key === 'Enter' && e.repeat) {
+      e.preventDefault();
+      return;
+    }
     if (e.key === 'Escape') {
       e.preventDefault();
       useUiStore.getState().requestClose();

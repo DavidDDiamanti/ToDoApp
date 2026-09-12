@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { isDirty, TodoEditor } from './TodoEditor';
@@ -17,6 +17,19 @@ beforeEach(() => {
 });
 
 describe('TodoEditor', () => {
+  it('swallows a repeated Enter so a held key cannot submit the editor it just opened', () => {
+    const onSave = vi.fn();
+    render(<TodoEditor initial={initial} heading="Edit item" submitLabel="Save changes" onSave={onSave} />);
+    const title = screen.getByLabelText('Title');
+
+    const repeatNotPrevented = fireEvent.keyDown(title, { key: 'Enter', repeat: true });
+    const firstNotPrevented = fireEvent.keyDown(title, { key: 'Enter' });
+
+    expect(repeatNotPrevented).toBe(false);
+    expect(firstNotPrevented).toBe(true);
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
   it('saves on Enter in the title field with trimmed values', async () => {
     const onSave = vi.fn();
     render(<TodoEditor initial={initial} heading="Edit item" submitLabel="Save changes" onSave={onSave} />);
