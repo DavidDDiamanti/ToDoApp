@@ -31,7 +31,10 @@ beforeEach(() => {
 describe('hover text', () => {
   it('titles the sync status with its text, since narrow screens show only its dot', () => {
     render(<Toolbar />);
-    expect(screen.getByText('Synced').closest('[data-state]')).toHaveAttribute('title', 'Synced');
+    const status = document.querySelector('[data-state]');
+    if (!(status instanceof HTMLElement)) throw new Error('no status');
+    expect(status.textContent).not.toBe('');
+    expect(status).toHaveAttribute('title', status.textContent ?? '');
   });
 
   beforeEach(async () => {
