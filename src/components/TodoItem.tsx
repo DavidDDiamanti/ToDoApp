@@ -41,7 +41,7 @@ export function TodoItem({ todo, map, depth, tree }: Props) {
   const isActive = useUiStore((s) => s.activeItemId === todo.id);
   const editorKind = useUiStore((s) => editorKindFor(s.openEditor, todo.id));
   const [hovered, setHovered] = useState(false);
-  // The dragged row hides its own buttons for the length of the drag; hover resumes on the drop.
+  // The dragged row hides its own buttons for the length of the drag; they return on the drop.
   const showHover = hovered && !isDragging;
   const [showDetails, setShowDetails] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -79,11 +79,17 @@ export function TodoItem({ todo, map, depth, tree }: Props) {
     [todo.id],
   );
 
-  // A keyboard move or a drop lands the row somewhere else without any pointer event, so the
-  // hover would otherwise stick to a row that is no longer under the pointer.
+  // A keyboard move lands the row somewhere else without any pointer event, so the hover would
+  // otherwise stick to a row that is no longer under the pointer. The row's own drop is the
+  // exception: it moves the row to where the pointer already is, so the hover must survive it.
+  // The drop commits the move and ends the drag in one batch, hence the previous-render check.
+  const wasDragging = useRef(false);
   useEffect(() => {
-    setHovered(false);
+    if (!isDragging && !wasDragging.current) setHovered(false);
   }, [todo.parent_id, todo.sort_order]);
+  useEffect(() => {
+    wasDragging.current = isDragging;
+  }, [isDragging]);
 
   const onHandleKeyDown = (e: ReactKeyboardEvent<HTMLButtonElement>) => {
     if (!e.altKey) return;

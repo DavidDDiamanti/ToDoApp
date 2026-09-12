@@ -302,6 +302,22 @@ describe('hover', () => {
     expect(screen.getByRole('button', { name: 'Edit Alpha' })).toBeInTheDocument();
   });
 
+  it('keeps the hover on the dragged row when its own drop moves it', () => {
+    const alpha = mk('a', null, { title: 'Alpha' });
+    seed(alpha, mk('b', null, { title: 'Beta' }));
+    render(<TodoTree />);
+    fireEvent.pointerEnter(bodyOf('Alpha'), { pointerType: 'mouse' });
+    act(() => { useDragStore.getState().start('a'); });
+
+    // A drop commits the move and ends the drag in one handler, so React batches both.
+    act(() => {
+      useTodoStore.getState().upsertTodo({ ...alpha, sort_order: alpha.sort_order + 10 }, false);
+      useDragStore.getState().end();
+    });
+
+    expect(screen.getByRole('button', { name: 'Edit Alpha' })).toBeInTheDocument();
+  });
+
   it('forgets the hover when the item moves without a pointer event', () => {
     const alpha = mk('a', null, { title: 'Alpha' });
     seed(alpha, mk('b', null, { title: 'Beta' }));
