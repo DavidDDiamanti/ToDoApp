@@ -67,6 +67,19 @@ export function safeStorage(storage: StateStorage): StateStorage {
   };
 }
 
+/**
+ * The browser's storage when it can be reached. Merely touching `localStorage` throws when a
+ * site has storage blocked, so the read itself is guarded; the fallback lives in memory and
+ * persists nothing, which keeps the app usable for the session.
+ */
+export function browserStorage(read: () => StateStorage): StateStorage {
+  try {
+    return safeStorage(read());
+  } catch {
+    return safeStorage(createMemoryStorage());
+  }
+}
+
 export function createSettingsStore(storage: StateStorage) {
   return create<SettingsState>()(
     persist(
@@ -99,6 +112,4 @@ export function createSettingsStore(storage: StateStorage) {
 // no hydration flag and no flash of the default theme. (The memory fallback keeps
 // the module importable where there is no DOM; it rehydrates asynchronously, but
 // nothing is persisted there anyway.)
-export const useSettingsStore = createSettingsStore(
-  safeStorage(typeof localStorage === 'undefined' ? createMemoryStorage() : localStorage),
-);
+export const useSettingsStore = createSettingsStore(browserStorage(() => localStorage));

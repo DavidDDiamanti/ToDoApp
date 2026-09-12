@@ -1,4 +1,4 @@
-import { useId } from 'react';
+import { useId, useRef } from 'react';
 import { useSystemDark } from '../hooks/useSystemDark';
 import { resolveTheme, useSettingsStore, type Gap } from '../store/settingsStore';
 import { DialogFrame } from './DialogFrame';
@@ -21,6 +21,7 @@ const GAPS: readonly { value: Gap; label: string; tip: string }[] = [
  */
 export function SettingsDialog({ onClose }: SettingsDialogProps) {
   const id = useId();
+  const switchRef = useRef<HTMLButtonElement>(null);
   const theme = useSettingsStore((s) => s.theme);
   const gap = useSettingsStore((s) => s.gap);
   const setTheme = useSettingsStore((s) => s.setTheme);
@@ -36,6 +37,7 @@ export function SettingsDialog({ onClose }: SettingsDialogProps) {
           <span id={`${id}-night`} className={styles.rowLabel}>Night mode</span>
           <button
             type="button"
+            ref={switchRef}
             role="switch"
             aria-checked={dark}
             aria-labelledby={`${id}-night`}
@@ -53,7 +55,12 @@ export function SettingsDialog({ onClose }: SettingsDialogProps) {
             type="button"
             className={styles.secondary}
             title={TIP.useDevice}
-            onClick={() => setTheme('system')}
+            onClick={() => {
+              setTheme('system');
+              // This button unmounts on the click; without a new home, focus would fall to the
+              // body, outside the Tab trap.
+              switchRef.current?.focus();
+            }}
           >
             Use device setting
           </button>

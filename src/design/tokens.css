@@ -10,6 +10,8 @@
   --accent: #2F6F4E;
   --on-accent: #FFFFFF;
   --danger: #B42318;
+  /* Dialog backdrop: a fixed dark scrim, so night mode dims rather than brightens. */
+  --scrim: rgb(28 36 48 / 0.4);
   --on-danger: #FFFFFF;
   --focus: #2F6F4E;
   --overdue: #B42318;
@@ -52,7 +54,7 @@
 }
 
 /* Dark palette, copy 1 of 2: the device setting, unless an explicit light override
-   is in force. The eleven declarations are identical to copy 2 below; CSS has no way
+   is in force. The twelve declarations are identical to copy 2 below; CSS has no way
    to share one block between a media query and an attribute selector, so every palette
    edit must be made in both places. */
 @media (prefers-color-scheme: dark) {
@@ -68,6 +70,7 @@
     --on-danger: #1A0805;
     --focus: #7CC6A0;
     --overdue: #F08A7E;
+    --scrim: rgb(0 0 0 / 0.55);
   }
 }
 
@@ -85,6 +88,7 @@
   --on-danger: #1A0805;
   --focus: #7CC6A0;
   --overdue: #F08A7E;
+  --scrim: rgb(0 0 0 / 0.55);
   /* An override also pins the UA's own colours (form controls, scrollbars). */
   color-scheme: dark;
 }

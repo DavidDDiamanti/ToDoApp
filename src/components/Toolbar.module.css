@@ -18,7 +18,13 @@
   color: var(--ink-muted); transition: color var(--motion) var(--ease);
 }
 .icon:hover { color: var(--ink); }
-@media (max-width: 480px) { .toggle span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); } }
+/* Narrow screens keep every control on one row by hiding text, never a control: the
+   toggle's label, the New item label and the sync status text become screen-reader only
+   (each control keeps its title and accessible name). Six controls fit in 351 px. */
+@media (max-width: 480px) {
+  .toggle span, .primary span, .statusText { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .primary { padding: 0 var(--space-3); }
+}
 .status { font-size: var(--text-sm); color: var(--ink-muted); display: inline-flex; align-items: center; gap: var(--space-1); }
 .status::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--ink-muted); }
 .status[data-state='synced']::before { background: var(--accent); }

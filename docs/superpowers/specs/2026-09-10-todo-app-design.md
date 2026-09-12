@@ -297,7 +297,7 @@ Requested after v4. Decisions taken with the user: the theme follows the device 
 
 ### 15.1 Store
 
-`src/store/settingsStore.ts` is a persisted zustand store on `localStorage` under the key `todo-settings`, holding `theme` (`system`, `light`, `dark`; default `system`) and `gap` (`small`, `medium`, `large`; default `medium`). Stored values are validated on rehydration and unknown ones fall back to the defaults. `resolveTheme(theme, systemDark)` is the pure mapping to `light` or `dark`. It is separate from `uiStore`, which stays UI-only and unpersisted. The storage adapter never throws (`safeStorage`), so a browser with storage disabled still changes settings in memory for the session. The store carries no gap-scale constant: the 0.7 and 1.3 multiples live only in `tokens.css` (a constant shipped in the first commit was removed as a second source of truth).
+`src/store/settingsStore.ts` is a persisted zustand store on `localStorage` under the key `todo-settings`, holding `theme` (`system`, `light`, `dark`; default `system`) and `gap` (`small`, `medium`, `large`; default `medium`). Stored values are validated on rehydration and unknown ones fall back to the defaults. `resolveTheme(theme, systemDark)` is the pure mapping to `light` or `dark`. It is separate from `uiStore`, which stays UI-only and unpersisted. The storage adapter never throws (`safeStorage`), and even reading `localStorage` is guarded (`browserStorage`, since a site with storage blocked throws on the getter itself), so a browser with storage disabled still changes settings in memory for the session. The store carries no gap-scale constant: the 0.7 and 1.3 multiples live only in `tokens.css` (a constant shipped in the first commit was removed as a second source of truth).
 
 ### 15.2 Applying the settings
 
@@ -314,7 +314,9 @@ Requested after v4. Decisions taken with the user: the theme follows the device 
 
 - A gear button in the toolbar (accessible name Settings, hover text Settings, `aria-expanded`) opens the Settings dialog. Done, Escape and a backdrop press close it; focus returns to the wheel.
 - Night mode is a switch (`role="switch"`) whose position shows the resolved theme. While no override is set, "Following the device setting" is shown under it; once overridden, a "Use device setting" button clears the override.
-- Gap between items is a radio group: Small, Medium, Large. Done takes focus when the dialog opens, as the action button does in the confirm dialogs.
+- Gap between items is a radio group: Small, Medium, Large. Done takes focus when the dialog opens, as the action button does in the confirm dialogs. "Use device setting" unmounts on activation and hands focus to the switch, so keyboard focus never falls out of the Tab trap. The wheel carries `aria-haspopup="dialog"` and only ever opens the dialog (the backdrop covers it while open).
+- Narrow screens (≤480 px) keep all six toolbar controls on one row by making the New item label, the Hide completed label and the sync status text screen-reader only; every control keeps its title and accessible name.
+- The dialog backdrop uses a `--scrim` token (a translucent dark colour in both palettes), so night mode dims the page rather than brightening it.
 - The wheel carries `data-keeps-editor`, which the outside-press hook treats like an editor toggle: pressing it never closes or prompts an open editor. It still deselects the selected item, like any press off an item. While the dialog is open, Enter, drags and outside presses are blocked by the existing dialog checks.
 
 ### 15.5 Not covered

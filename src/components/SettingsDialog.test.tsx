@@ -153,6 +153,65 @@ describe('the settings wheel', () => {
   });
 });
 
+describe('keyboard use of the settings panel', () => {
+  it('returns focus to the switch when "Use device setting" removes itself', async () => {
+    stubMatchMedia(false);
+    act(() => { useSettingsStore.getState().setTheme('dark'); });
+    renderApp();
+    await userEvent.click(wheel());
+    const dialog = screen.getByRole('dialog', { name: 'Settings' });
+    const useDevice = within(dialog).getByRole('button', { name: 'Use device setting' });
+    useDevice.focus();
+
+    await userEvent.keyboard('{Enter}');
+
+    expect(within(dialog).queryByRole('button', { name: 'Use device setting' })).toBeNull();
+    expect(within(dialog).getByRole('switch', { name: 'Night mode' })).toHaveFocus();
+    expect(useSettingsStore.getState().theme).toBe('system');
+  });
+
+  it('Space and Enter both flip the switch without closing the dialog', async () => {
+    stubMatchMedia(false);
+    renderApp();
+    await userEvent.click(wheel());
+    const dialog = screen.getByRole('dialog', { name: 'Settings' });
+    const toggle = within(dialog).getByRole('switch', { name: 'Night mode' });
+    toggle.focus();
+
+    await userEvent.keyboard(' ');
+    expect(toggle).toHaveAttribute('aria-checked', 'true');
+    await userEvent.keyboard('{Enter}');
+    expect(toggle).toHaveAttribute('aria-checked', 'false');
+    expect(screen.getByRole('dialog', { name: 'Settings' })).toBeInTheDocument();
+  });
+
+  it('Tab wraps inside the panel in both directions', async () => {
+    stubMatchMedia(false);
+    renderApp();
+    await userEvent.click(wheel());
+    const dialog = screen.getByRole('dialog', { name: 'Settings' });
+    const done = within(dialog).getByRole('button', { name: 'Done' });
+    const toggle = within(dialog).getByRole('switch', { name: 'Night mode' });
+    expect(done).toHaveFocus();
+
+    await userEvent.tab();
+    expect(toggle).toHaveFocus();
+    await userEvent.tab({ shift: true });
+    expect(done).toHaveFocus();
+  });
+
+  it('the wheel announces a dialog popup and only ever opens it', async () => {
+    stubMatchMedia(false);
+    renderApp();
+    expect(wheel()).toHaveAttribute('aria-haspopup', 'dialog');
+    await userEvent.click(wheel());
+    expect(screen.getByRole('dialog', { name: 'Settings' })).toBeInTheDocument();
+    // A second activation of the wheel (only reachable programmatically under the backdrop) keeps it open.
+    fireEvent.click(wheel());
+    expect(screen.getByRole('dialog', { name: 'Settings' })).toBeInTheDocument();
+  });
+});
+
 describe('night mode', () => {
   it('shows the resolved device theme while no override is set', async () => {
     stubMatchMedia(true);

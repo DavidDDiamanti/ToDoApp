@@ -33,7 +33,7 @@ export function Toolbar() {
     <header className={styles.bar}>
       <div className={styles.row}>
         <h1 className={styles.brand}>Todo</h1>
-        <span className={styles.status} data-state={sync} aria-live="polite">{LABELS[sync]}</span>
+        <span className={styles.status} data-state={sync} aria-live="polite"><span className={styles.statusText}>{LABELS[sync]}</span></span>
         <label className={styles.toggle}>
           <input type="checkbox" checked={hideCompleted} onChange={(e) => setHideCompleted(e.target.checked)} aria-label="Hide completed" title={TIP.hideCompleted} />
           <span>Hide completed</span>
@@ -44,8 +44,9 @@ export function Toolbar() {
           data-keeps-editor
           aria-label="Settings"
           title={TIP.settings}
+          aria-haspopup="dialog"
           aria-expanded={settingsOpen}
-          onClick={() => setSettingsOpen((open) => !open)}
+          onClick={() => setSettingsOpen(true)}
         >
           <GearIcon />
         </button>

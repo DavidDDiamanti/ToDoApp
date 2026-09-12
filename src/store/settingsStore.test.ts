@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { StateStorage } from 'zustand/middleware';
-import { createSettingsStore, resolveTheme, safeStorage, useSettingsStore } from './settingsStore';
+import { browserStorage, createSettingsStore, resolveTheme, safeStorage, useSettingsStore } from './settingsStore';
 
 /**
  * A synchronous fake of localStorage. createMemoryStorage in storage.ts is async
@@ -83,6 +83,31 @@ describe('settingsStore', () => {
     const store = createSettingsStore(syncStorage(null));
     expect(store.getState().theme).toBe('system');
     expect(store.getState().gap).toBe('medium');
+  });
+});
+
+describe('browserStorage', () => {
+  it('falls back to memory when merely reading localStorage throws, and still never throws', () => {
+    const storage = browserStorage(() => {
+      throw new Error('SecurityError: access is denied for this document');
+    });
+    expect(() => storage.setItem('todo-settings', '{}')).not.toThrow();
+    const store = createSettingsStore(storage);
+    expect(store.getState().theme).toBe('system');
+    expect(() => store.getState().setGap('large')).not.toThrow();
+    expect(store.getState().gap).toBe('large');
+  });
+
+  it('uses the given storage when it is available', () => {
+    const data: Record<string, string> = { 'todo-settings': JSON.stringify({ state: { theme: 'dark', gap: 'small' }, version: 0 }) };
+    const storage = browserStorage(() => ({
+      getItem: (name) => data[name] ?? null,
+      setItem: (name, value) => { data[name] = value; },
+      removeItem: (name) => { delete data[name]; },
+    }));
+    const store = createSettingsStore(storage);
+    expect(store.getState().theme).toBe('dark');
+    expect(store.getState().gap).toBe('small');
   });
 });
 
